@@ -1,0 +1,22 @@
+name: CounterApp
+global: {}
+router:
+  routes:
+    - path: /
+      component: Counter
+components:
+  - name: Counter
+    signals:
+      count: 0
+    computeds:
+      doubled: count * 2
+    methods:
+      increment: count = count + 1
+      decrement: count = count - 1
+    template:
+      div .counter:
+        h1: "Counter: {{ count }}"
+        p: "Doubled: {{ doubled }}"
+        div .controls:
+          button @click=increment: Increment
+          button @click=decrement: Decrement

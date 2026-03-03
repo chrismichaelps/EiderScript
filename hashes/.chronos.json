@@ -1,0 +1,22 @@
+{
+  "timeline": [
+    {
+      "state_id": "BigInt:0x1",
+      "timestamp": "2026-03-03T18:16:00Z",
+      "logic_delta": {
+        "intent": "F1: Project bootstrap, tooling config, hashes directory, and grammar formalization",
+        "risk": "Low"
+      },
+      "commit_ref": "HEAD"
+    },
+    {
+      "state_id": "BigInt:0x2",
+      "timestamp": "2026-03-03T18:35:00Z",
+      "logic_delta": {
+        "intent": "F2: YAML compiler + Effect TS runtime MVP — schema, parser, compiler, runtime, SSR, Vite plugin",
+        "risk": "Medium"
+      },
+      "commit_ref": "HEAD"
+    }
+  ]
+}
