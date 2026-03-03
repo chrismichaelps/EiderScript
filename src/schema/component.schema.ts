@@ -19,12 +19,12 @@ export const WatchEntrySchema = z.object({
 
 export const ComponentSchema = z.object({
   name: z.string().min(1, 'Component name must not be empty'),
-  props: z.record(PropSchema).optional(),
-  signals: z.record(z.any()).optional(),
-  computeds: z.record(z.string()).optional(),
-  methods: z.record(z.string()).optional(),
-  actions: z.record(ActionSchema).optional(),
-  watch: z.record(WatchEntrySchema).optional(),
+  props: z.record(z.string(), PropSchema).optional(),
+  signals: z.record(z.string(), z.any()).optional(),
+  computeds: z.record(z.string(), z.string()).optional(),
+  methods: z.record(z.string(), z.string()).optional(),
+  actions: z.record(z.string(), ActionSchema).optional(),
+  watch: z.record(z.string(), WatchEntrySchema).optional(),
   onMounted: z.string().optional(),
   onUnmounted: z.string().optional(),
   onBeforeMount: z.string().optional(),

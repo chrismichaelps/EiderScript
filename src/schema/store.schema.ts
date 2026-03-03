@@ -14,10 +14,10 @@ const StoreWatchEntrySchema = z.object({
 
 export const StoreSchema = z.object({
   id: z.string(),
-  state: z.record(z.any()).optional(),
-  getters: z.record(z.string()).optional(),
-  actions: z.record(z.union([z.string(), StoreActionSchema])).optional(),
-  watch: z.record(StoreWatchEntrySchema).optional(),
+  state: z.record(z.string(), z.any()).optional(),
+  getters: z.record(z.string(), z.string()).optional(),
+  actions: z.record(z.string(), z.union([z.string(), StoreActionSchema])).optional(),
+  watch: z.record(z.string(), StoreWatchEntrySchema).optional(),
 })
 
 export type StoreAST = z.infer<typeof StoreSchema>

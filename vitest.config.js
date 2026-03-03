@@ -6,10 +6,8 @@ export default {
     include: ["src/__tests__/**/*.test.ts"],
     testTimeout: 15000,
     pool: "forks",
-    poolOptions: {
-      forks: {
-        singleFork: true,
-      },
+    forks: {
+      singleFork: true,
     },
     coverage: {
       provider: "v8",
