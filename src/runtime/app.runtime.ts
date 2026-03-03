@@ -6,9 +6,10 @@ import { parseYaml } from '../parser/yaml.parser.js'
 import { compileComponent } from '../compiler/component.compiler.js'
 import { compileStore } from '../compiler/store.compiler.js'
 import { compileRouter } from '../compiler/router.compiler.js'
-import { compileNode } from '../compiler/template.compiler.js'
+import { type TemplateCompilerConfig, compileNode } from '../compiler/template.compiler.js'
 import { createScope } from './scope.js'
 import { RuntimeError } from '../effects/errors.js'
+import { EiderConstValues } from '../config/constants.js'
 import type { RouteComponent } from 'vue-router'
 import type { AppAST } from '../schema/router.schema.js'
 import type { ComponentAST } from '../schema/component.schema.js'
@@ -37,10 +38,21 @@ export const createEiderApp = (
   input: EiderAppInput,
 ): Effect.Effect<EiderApp, RuntimeError> =>
   Effect.gen(function* () {
+    const eiderConstants = yield* EiderConstValues
+
+    const tplConfig: TemplateCompilerConfig = {
+      dirIf: eiderConstants.dirIf,
+      dirFor: eiderConstants.dirFor,
+      dirModel: eiderConstants.dirModel,
+      defaultHtmlTag: eiderConstants.defaultHtmlTag,
+      fragmentHtmlTag: eiderConstants.fragmentHtmlTag,
+      directiveRe: new RegExp(`^(${eiderConstants.dirIf}|${eiderConstants.dirFor}|${eiderConstants.dirModel}|@\\w[\\w.]*|:\\w[\\w-]*)$`),
+    }
+
     const pinia = createPinia()
     const compiledComponents: Record<string, unknown> = {}
 
-    // ── 1. Parse + compile all component YAMLs ──────────────────────────────
+    // Parse + compile all component YAMLs
     for (const [name, yaml] of Object.entries(input.components ?? {})) {
       const doc = yield* parseYaml(yaml).pipe(
         Effect.mapError((e) => new RuntimeError({ message: e.message, cause: e })),
@@ -58,7 +70,7 @@ export const createEiderApp = (
       compiledComponents[name] = component
     }
 
-    // ── 2. Parse app YAML ────────────────────────────────────────────────────
+    // Parse app YAML
     const appDoc = yield* parseYaml(input.app).pipe(
       Effect.mapError((e) => new RuntimeError({ message: e.message, cause: e })),
     )
@@ -71,44 +83,44 @@ export const createEiderApp = (
     }
     const appAst = appDoc.ast as AppAST
 
-    // ── 3. Build root component ──────────────────────────────────────────────
+    // Build root component 
     const RootComponent = appAst.template
       ? {
         name: appAst.name,
         render() {
-          const scope = createScope({}, {}, {}, {})
-          return compileNode(appAst.template, scope)
+          const scope = createScope({}, {}, {}, {}, eiderConstants.interpolationPrefix)
+          return compileNode(appAst.template, scope, tplConfig)
         },
       }
-      : { name: appAst.name, template: '<router-view />' }
+      : { name: appAst.name, template: eiderConstants.routerViewTemplate }
 
-    // ── 4. Create Vue app ────────────────────────────────────────────────────
+    // Create Vue app
     const vueApp = input.ssr
       ? createSSRApp(RootComponent as Parameters<typeof createSSRApp>[0])
       : createApp(RootComponent as Parameters<typeof createApp>[0])
 
     vueApp.use(pinia)
 
-    // ── 5. Compile + register stores ─────────────────────────────────────────
+    // Compile + register stores
     for (const [, yaml] of Object.entries(input.stores ?? {})) {
       const storeDoc = yield* parseYaml(yaml).pipe(
         Effect.mapError((e) => new RuntimeError({ message: e.message, cause: e })),
       )
-      if (storeDoc.kind !== 'store') continue
+      if (storeDoc.kind !== eiderConstants.kindStore) continue
       yield* compileStore(storeDoc.ast as StoreAST).pipe(
         Effect.mapError((e) => new RuntimeError({ message: e.message, cause: e })),
       )
     }
 
-    // ── 6. Compile + install router ──────────────────────────────────────────
+    // Compile + install router
     const resolveComponent = (name: string): RouteComponent =>
       (compiledComponents[name] as RouteComponent | undefined) ??
-      ({ template: `<div>[ ${name} ]</div>` } satisfies RouteComponent)
+      ({ template: `${eiderConstants.routerFallbackPrefix} ${name} ${eiderConstants.routerFallbackSuffix}` } satisfies RouteComponent)
 
     const router = compileRouter(appAst, resolveComponent, input.ssr ?? false)
     if (router) vueApp.use(router)
 
-    // ── 7. Register compiled components globally ─────────────────────────────
+    // Register compiled components globally
     for (const [name, component] of Object.entries(compiledComponents)) {
       vueApp.component(
         name,
@@ -120,4 +132,6 @@ export const createEiderApp = (
       vueApp,
       mount: (selector: string) => vueApp.mount(selector),
     }
-  })
+  }).pipe(
+    Effect.catchAll(e => e instanceof RuntimeError ? Effect.fail(e) : Effect.fail(new RuntimeError({ message: String(e) })))
+  )

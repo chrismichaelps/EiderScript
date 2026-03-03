@@ -5,27 +5,27 @@ import { ComponentSchema } from '../schema/component.schema.js'
 import { StoreSchema } from '../schema/store.schema.js'
 import { AppSchema } from '../schema/router.schema.js'
 import { ParseError } from '../effects/errors.js'
+import { EiderConstValues } from '../config/constants.js'
 import type { EiderAST } from './types.js'
 
-/** @EiderScript.Parser.YamlParser - Detects YAML document kind by shape.
- * Priority: component > app > store (most specific first to avoid ambiguity)
- * - component: has "name" with "template" (top-level) or "props" — no "id"
- * - app:       has "name" + ("router" | "global"), no "id"
- * - store:     has "id" at top level (all other fields optional)
- */
-function detectKind(raw: unknown): 'component' | 'store' | 'app' | null {
+interface DocumentKinds {
+  component: string
+  store: string
+  app: string
+}
+
+/** @EiderScript.Parser.YamlParser - Detects YAML document kind by shape. */
+function detectKind(raw: unknown, kinds: DocumentKinds): string | null {
   if (typeof raw !== 'object' || raw === null) return null
   const obj = raw as Record<string, unknown>
   // Component: must have "name" and either "template" or "props"; must not have "id"
   if (!('id' in obj) && 'name' in obj) {
     if ('template' in obj || 'props' in obj || 'signals' in obj || 'computeds' in obj || 'methods' in obj || 'actions' in obj || 'watch' in obj || 'onMounted' in obj || 'onUnmounted' in obj || 'onBeforeMount' in obj || 'onUpdated' in obj || 'styles' in obj) {
-      return 'component'
+      return kinds.component
     }
   }
-  // App: name + router/global but not id
-  if ('name' in obj && ('router' in obj || 'global' in obj) && !('id' in obj)) return 'app'
-  // Store: id at top level
-  if ('id' in obj) return 'store'
+  if ('name' in obj && ('router' in obj || 'global' in obj) && !('id' in obj)) return kinds.app
+  if ('id' in obj) return kinds.store
   return null
 }
 
@@ -34,16 +34,19 @@ export const parseYaml = (
   raw: string,
 ): Effect.Effect<EiderAST, ParseError> =>
   Effect.gen(function* () {
+    const eiderConstants = yield* EiderConstValues
+
     const parsed = yield* Effect.try({
       try: () => load(raw),
       catch: (e) =>
-        new ParseError({ message: `YAML parse failed: ${String(e)}`, source: raw }),
+        new ParseError({ message: `${eiderConstants.errParseFailed} ${String(e)}`, source: raw }),
     })
 
-    const kind = detectKind(parsed)
+    const kinds = { component: eiderConstants.kindComponent, store: eiderConstants.kindStore, app: eiderConstants.kindApp }
+    const kind = detectKind(parsed, kinds)
 
-    if (kind === 'component') {
-      const result = ComponentSchema.safeParse(parsed)
+    if (kind === eiderConstants.kindComponent) {
+      const result = ComponentSchema(eiderConstants.errComponentNameEmpty).safeParse(parsed)
       if (!result.success) {
         return yield* Effect.fail(
           new ParseError({
@@ -54,7 +57,7 @@ export const parseYaml = (
       return { kind: 'component', ast: result.data } satisfies EiderAST
     }
 
-    if (kind === 'store') {
+    if (kind === eiderConstants.kindStore) {
       const result = StoreSchema.safeParse(parsed)
       if (!result.success) {
         return yield* Effect.fail(
@@ -66,7 +69,7 @@ export const parseYaml = (
       return { kind: 'store', ast: result.data } satisfies EiderAST
     }
 
-    if (kind === 'app') {
+    if (kind === eiderConstants.kindApp) {
       const result = AppSchema.safeParse(parsed)
       if (!result.success) {
         return yield* Effect.fail(
@@ -80,9 +83,10 @@ export const parseYaml = (
 
     return yield* Effect.fail(
       new ParseError({
-        message:
-          'Cannot determine YAML document type. Must have "name"+"template" (component), "id" (store), or "name"+"router" (app).',
+        message: eiderConstants.errUnknownYaml,
         source: raw,
       }),
     )
-  })
+  }).pipe(
+    Effect.catchAll(e => e instanceof ParseError ? Effect.fail(e) : Effect.fail(new ParseError({ message: String(e), source: raw })))
+  )

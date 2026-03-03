@@ -19,11 +19,12 @@ export function createScope(
   signalDefs: Record<string, unknown>,
   computedDefs: Record<string, string>,
   methodDefs: Record<string, string>,
+  interpolationPrefix = '{{',
 ): Scope {
   const signals: Record<string, Ref<unknown>> = {}
   for (const [key, initial] of Object.entries(signalDefs)) {
     signals[key] = ref(
-      typeof initial === 'string' && initial.startsWith('{{')
+      typeof initial === 'string' && initial.startsWith(interpolationPrefix)
         ? undefined
         : initial,
     )

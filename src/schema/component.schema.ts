@@ -17,8 +17,8 @@ export const WatchEntrySchema = z.object({
   deep: z.boolean().optional(),
 })
 
-export const ComponentSchema = z.object({
-  name: z.string().min(1, 'Component name must not be empty'),
+export const ComponentSchema = (errComponentNameEmpty: string) => z.object({
+  name: z.string().min(1, errComponentNameEmpty),
   props: z.record(z.string(), PropSchema).optional(),
   signals: z.record(z.string(), z.any()).optional(),
   computeds: z.record(z.string(), z.string()).optional(),
@@ -35,4 +35,4 @@ export const ComponentSchema = z.object({
     .optional(),
 })
 
-export type ComponentAST = z.infer<typeof ComponentSchema>
+export type ComponentAST = z.infer<ReturnType<typeof ComponentSchema>>
