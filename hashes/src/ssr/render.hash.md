@@ -1,35 +1,44 @@
 ---
-shard_id: "@root/hashes/src/ssr/render.hash.md"
-grammar_refs:
-  - "@root/hashes/grammar/vue.hash.md"
-  - "@root/hashes/grammar/effect.hash.md"
-fidelity_level: Active
-state_anchor: "BigInt:0x2"
+State_ID: "BigInt:0x6"
+Git_SHA: HEAD
+Grammar_Lock: "@root/hashes/grammar/vue.hash.md"
+Parent_Bridge: "@root/hashes/local.map.json"
+Shard_ID: "@root/src/ssr/render"
 ---
 
-# EiderScript SSR — render.ts
+## @EiderScript.SSR.Render
 
-## Purpose
-Server-side renders an EiderApp to an HTML string for hydration.
+### [Signatures]
 
-## Rules
+| Export | Kind | Signature |
+|--------|------|-----------|
+| `SSRResult` | interface | `{ readonly html: string; readonly pinia: Record<string, unknown> }` |
+| `renderEider` | fn | `(input: Omit<EiderAppInput, 'ssr'>) => Effect.Effect<SSRResult, RuntimeError>` |
 
-### R-SSR-RENDER-001: renderEider Signature
-```ts
-renderEider(yaml: string): Effect<{ html: string; state: string }, ParseError | CompileError>
+### [Governance]
+
+**Export Law:** Only `renderEider` and `SSRResult` are public. No Vue internals leak across the shard boundary.
+
+**Transformation Law:** `renderEider` delegates all compilation to `createEiderApp({ ...input, ssr: true })`. It does not perform any YAML parsing or component compilation directly.
+
+**Propagation Law:** `@vue/server-renderer` errors are caught via `Effect.tryPromise` and wrapped into `RuntimeError`. No raw Promise rejections escape.
+
+### [Pipeline]
+
+```
+renderEider(input)
+  → createEiderApp({ ...input, ssr: true })   ← Effect.Effect<EiderApp, RuntimeError>
+  → renderToString(app.vueApp)                 ← Promise<string>
+  → { html, pinia: {} }                        ← SSRResult
 ```
 
-### R-SSR-RENDER-002: SSR App Creation
-Uses `createEiderApp(yaml, { ssr: true })` to get an SSR-capable Vue app
+### [Prohibited Patterns]
 
-### R-SSR-RENDER-003: renderToString
-`@vue/server-renderer`'s `renderToString(app)` converts the VNode tree to HTML string.
+- `PROHIBITED:` Calling `renderToString` outside of `Effect.tryPromise` — unhandled rejection risk
+- `PROHIBITED:` Returning mutable references in `SSRResult` — all fields must be `readonly`
+- `PROHIBITED:` Implementing component compilation logic inside `render.ts` — delegate to `app.runtime`
 
-### R-SSR-RENDER-004: State Serialization
-Pinia state snapshot is serialized as JSON for hydration script injection:
-```html
-<script>window.__PINIA_STATE__ = {}</script>
-```
+### [Linkage]
 
-### R-SSR-RENDER-005: Effect Pipeline
-Entire pipeline inside `Effect.gen`: parse → compile → renderToString → serialize state
+- Depends on: `@root/src/runtime/app.runtime.ts`, `@root/hashes/grammar/vue.hash.md`
+- Test Coverage: `@root/src/__tests__/ssr.test.ts`

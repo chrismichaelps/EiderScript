@@ -1,33 +1,48 @@
 ---
-shard_id: "@root/hashes/src/ssr/hydrate.hash.md"
-grammar_refs:
-  - "@root/hashes/grammar/vue.hash.md"
-  - "@root/hashes/grammar/effect.hash.md"
-fidelity_level: Active
-state_anchor: "BigInt:0x2"
+State_ID: "BigInt:0x6"
+Git_SHA: HEAD
+Grammar_Lock: "@root/hashes/grammar/vue.hash.md"
+Parent_Bridge: "@root/hashes/local.map.json"
+Shard_ID: "@root/src/ssr/hydrate"
 ---
 
-# EiderScript SSR — hydrate.ts
+## @EiderScript.SSR.Hydrate
 
-## Purpose
-Client-side hydration — mounts the EiderApp onto server-rendered DOM without full re-render.
+### [Signatures]
 
-## Rules
+| Export | Kind | Signature |
+|--------|------|-----------|
+| `hydrateEider` | fn | `(input: Omit<EiderAppInput, 'ssr'>, selector: string) => Effect.Effect<void, RuntimeError>` |
 
-### R-SSR-HYDRATE-001: hydrateEider Signature
-```ts
-hydrateEider(yaml: string, container: Element): Effect<void, ParseError | CompileError>
+### [Governance]
+
+**Export Law:** `hydrateEider` is the sole public export. No Vue instance leaks.
+
+**Transformation Law:** `hydrateEider` calls `createEiderApp({ ...input, ssr: false })` — Vue's client-side hydration kicks in automatically when the DOM contains server-rendered HTML.
+
+**Propagation Law:** `app.mount()` errors are caught via `Effect.try` and wrapped into `RuntimeError`.
+
+### [Pipeline]
+
+```
+hydrateEider(input, selector)
+  → createEiderApp({ ...input, ssr: false })   ← Effect.Effect<EiderApp, RuntimeError>
+  → app.mount(selector)                         ← void (hydration)
 ```
 
-### R-SSR-HYDRATE-002: Non-SSR App
-Uses `createEiderApp(yaml, { ssr: false })` — standard `createApp()` for hydration context
+### [Hydration Contract]
 
-### R-SSR-HYDRATE-003: mount()
-`app.mount(container)` — Vue hydrates the existing server-rendered DOM
-Vue's hydration algorithm reconciles the VNode tree with existing DOM nodes.
+- The DOM identified by `selector` MUST already contain SSR-rendered HTML from `renderEider`
+- `ssr: false` passes `createApp` (not `createSSRApp`) — Vue detects existing server HTML and hydrates in place
+- If the DOM is empty, Vue falls back to a fresh client-side mount (graceful degradation)
 
-### R-SSR-HYDRATE-004: Pinia State Rehydration
-Reads `window.__PINIA_STATE__` injected by the SSR render step to restore store state.
+### [Prohibited Patterns]
 
-### R-SSR-HYDRATE-005: Client-Only
-This module must only be imported in browser environments — it references `window`.
+- `PROHIBITED:` Calling `app.mount()` outside of `Effect.try` — uncaught DOM errors would be untracked
+- `PROHIBITED:` Passing `ssr: true` — client hydration must use `createApp`, not `createSSRApp`
+- `PROHIBITED:` DOM querying or `document.querySelector` inside this module — selector is passed by caller
+
+### [Linkage]
+
+- Depends on: `@root/src/runtime/app.runtime.ts`, `@root/hashes/grammar/vue.hash.md`
+- Test Coverage: `@root/src/__tests__/ssr.test.ts`

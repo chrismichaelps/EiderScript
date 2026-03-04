@@ -1,6 +1,6 @@
 {
   "graph_version": "1.0",
-  "state_anchor": "BigInt:0x5",
+  "state_anchor": "BigInt:0x6",
   "description": "Directional dependency edges. When an upstream node changes, all downstream nodes are flagged DIRTY.",
   "grammar_refs": {
     "typescript": "@root/hashes/grammar/typescript.hash.md",
@@ -25,7 +25,9 @@
     { "from": "src/effects/layers",              "to": "hashes/grammar/effect",       "type": "SCHEMA_CONTRACT",  "impact": "HIGH",   "reason": "Layer.succeed + Layer.mergeAll" },
     { "from": "src/parser/yaml.parser",          "to": "hashes/grammar/effect",       "type": "SCHEMA_CONTRACT",  "impact": "MEDIUM", "reason": "Effect.try wraps js-yaml.load" },
     { "from": "src/runtime/filters",              "to": "hashes/grammar/typescript",   "type": "LAYER_DEPENDENCY", "impact": "MEDIUM", "reason": "13 built-in filter fns; splitPipeExpr char-level scanner" },
-    { "from": "src/compiler/template.compiler",   "to": "src/runtime/filters",         "type": "SCHEMA_CONTRACT",  "impact": "HIGH",   "reason": "interpolate() calls splitPipeExpr + applyFilters for pipe resolution" }
+    { "from": "src/compiler/template.compiler",   "to": "src/runtime/filters",         "type": "SCHEMA_CONTRACT",  "impact": "HIGH",   "reason": "interpolate() calls splitPipeExpr + applyFilters for pipe resolution" },
+    { "from": "src/ssr/render",                   "to": "src/runtime/app.runtime",     "type": "LAYER_DEPENDENCY", "impact": "HIGH",   "reason": "renderEider delegates all compilation to createEiderApp" },
+    { "from": "src/ssr/hydrate",                  "to": "src/runtime/app.runtime",     "type": "LAYER_DEPENDENCY", "impact": "HIGH",   "reason": "hydrateEider delegates mount to createEiderApp" }
   ],
   "dirty_propagation_rule": "When a node's fidelity_level changes to DIRTY, recursively mark all nodes reachable via outgoing edges as DIRTY"
 }

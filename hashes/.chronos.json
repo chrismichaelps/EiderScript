@@ -62,6 +62,15 @@
         "risk": "Low"
       },
       "commit_ref": "HEAD"
+    },
+    {
+      "state_id": "BigInt:0x6",
+      "timestamp": "2026-03-04T10:18:00Z",
+      "logic_delta": {
+        "intent": "F7: SSR hash shards (render.hash.md, hydrate.hash.md), AppSchema inline components[] support, app.runtime self-contained compilation, ssr.test.ts integration tests",
+        "risk": "Medium"
+      },
+      "commit_ref": "HEAD"
     }
   ]
 }
