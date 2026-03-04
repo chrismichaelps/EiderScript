@@ -6,7 +6,10 @@
 EiderScript is a YAML-based framework that lets you build Vue 3 apps by defining components, Pinia stores, and Vue Router routes entirely in YAML, which compiles to standard Vue 3 code with full reactivity and internal Effect.ts handling for async operations.
 </p>
 
+>[!NOTE]
+> **Experimental project under development**
 ---
+
 
 ### **:busts_in_silhouette: Credits**
 
