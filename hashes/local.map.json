@@ -1,6 +1,6 @@
 {
   "shard_id": "@root",
-  "state_anchor": "BigInt:0x6",
+  "state_anchor": "BigInt:0x7",
   "parent_bridge": null,
   "git_anchor": "HEAD",
   "cache_integrity": "VERIFIED",
@@ -64,18 +64,14 @@
         "file_path": "@root/src/effects/services.ts",
         "hash_reference": "@root/hashes/src/effects/services.hash.md",
         "grammar_ref": "@root/hashes/grammar/effect.hash.md",
-        "dependencies": [
-          "@root/hashes/src/effects/errors.hash.md"
-        ],
+        "dependencies": ["@root/hashes/src/effects/errors.hash.md"],
         "fidelity_level": "Active"
       },
       "effects.layers": {
         "file_path": "@root/src/effects/layers.ts",
         "hash_reference": "@root/hashes/src/effects/layers.hash.md",
         "grammar_ref": "@root/hashes/grammar/effect.hash.md",
-        "dependencies": [
-          "@root/hashes/src/effects/services.hash.md"
-        ],
+        "dependencies": ["@root/hashes/src/effects/services.hash.md"],
         "fidelity_level": "Active"
       },
       "parser.types": {
@@ -113,9 +109,7 @@
         "file_path": "@root/src/compiler/template.compiler.ts",
         "hash_reference": "@root/hashes/src/compiler/template.hash.md",
         "grammar_ref": "@root/hashes/grammar/vue.hash.md",
-        "dependencies": [
-          "@root/hashes/src/parser/types.hash.md"
-        ],
+        "dependencies": ["@root/hashes/src/parser/types.hash.md"],
         "fidelity_level": "Active"
       },
       "compiler.store": {
@@ -132,9 +126,7 @@
         "file_path": "@root/src/compiler/router.compiler.ts",
         "hash_reference": "@root/hashes/src/compiler/router.hash.md",
         "grammar_ref": "@root/hashes/grammar/vue.hash.md",
-        "dependencies": [
-          "@root/hashes/src/parser/types.hash.md"
-        ],
+        "dependencies": ["@root/hashes/src/parser/types.hash.md"],
         "fidelity_level": "Active"
       },
       "runtime.scope": {
@@ -176,18 +168,14 @@
         "file_path": "@root/src/ssr/render.ts",
         "hash_reference": "@root/hashes/src/ssr/render.hash.md",
         "grammar_ref": "@root/hashes/grammar/vue.hash.md",
-        "dependencies": [
-          "@root/hashes/src/runtime/app.hash.md"
-        ],
+        "dependencies": ["@root/hashes/src/runtime/app.hash.md"],
         "fidelity_level": "Active"
       },
       "ssr.hydrate": {
         "file_path": "@root/src/ssr/hydrate.ts",
         "hash_reference": "@root/hashes/src/ssr/hydrate.hash.md",
         "grammar_ref": "@root/hashes/grammar/vue.hash.md",
-        "dependencies": [
-          "@root/hashes/src/runtime/app.hash.md"
-        ],
+        "dependencies": ["@root/hashes/src/runtime/app.hash.md"],
         "fidelity_level": "Active"
       },
       "vite-plugin": {
@@ -212,44 +200,79 @@
         "file_path": "@root/src/directives/v-for.ts",
         "hash_reference": "@root/hashes/src/directives/v-for.hash.md",
         "grammar_ref": "@root/hashes/grammar/vue.hash.md",
-        "dependencies": [
-          "@root/hashes/src/runtime/scope.hash.md"
-        ],
+        "dependencies": ["@root/hashes/src/runtime/scope.hash.md"],
         "fidelity_level": "Active"
       },
       "directives.v-if": {
         "file_path": "@root/src/directives/v-if.ts",
         "hash_reference": "@root/hashes/src/directives/v-if.hash.md",
         "grammar_ref": "@root/hashes/grammar/vue.hash.md",
-        "dependencies": [
-          "@root/hashes/src/runtime/scope.hash.md"
-        ],
+        "dependencies": ["@root/hashes/src/runtime/scope.hash.md"],
         "fidelity_level": "Active"
       },
       "directives.v-model": {
         "file_path": "@root/src/directives/v-model.ts",
         "hash_reference": "@root/hashes/src/directives/v-model.hash.md",
         "grammar_ref": "@root/hashes/grammar/vue.hash.md",
-        "dependencies": [
-          "@root/hashes/src/runtime/scope.hash.md"
-        ],
+        "dependencies": ["@root/hashes/src/runtime/scope.hash.md"],
         "fidelity_level": "Active"
       },
       "directives.v-show": {
         "file_path": "@root/src/directives/v-show.ts",
         "hash_reference": "@root/hashes/src/directives/v-show.hash.md",
         "grammar_ref": "@root/hashes/grammar/vue.hash.md",
-        "dependencies": [
-          "@root/hashes/src/runtime/scope.hash.md"
-        ],
+        "dependencies": ["@root/hashes/src/runtime/scope.hash.md"],
         "fidelity_level": "Active"
       },
       "directives.v-bind": {
         "file_path": "@root/src/directives/v-bind.ts",
         "hash_reference": "@root/hashes/src/directives/v-bind.hash.md",
         "grammar_ref": "@root/hashes/grammar/vue.hash.md",
+        "dependencies": ["@root/hashes/src/runtime/scope.hash.md"],
+        "fidelity_level": "Active"
+      },
+      "directives.v-once": {
+        "file_path": "@root/src/directives/v-once.ts",
+        "hash_reference": "@root/hashes/src/directives/v-once.hash.md",
+        "grammar_ref": "@root/hashes/grammar/vue.hash.md",
+        "dependencies": ["@root/hashes/src/runtime/scope.hash.md"],
+        "fidelity_level": "Active"
+      },
+      "directives.v-pre": {
+        "file_path": "@root/src/directives/v-pre.ts",
+        "hash_reference": "@root/hashes/src/directives/v-pre.hash.md",
+        "grammar_ref": "@root/hashes/grammar/vue.hash.md",
+        "dependencies": [],
+        "fidelity_level": "Active"
+      },
+      "directives.v-memo": {
+        "file_path": "@root/src/directives/v-memo.ts",
+        "hash_reference": "@root/hashes/src/directives/v-memo.hash.md",
+        "grammar_ref": "@root/hashes/grammar/vue.hash.md",
+        "dependencies": ["@root/hashes/src/runtime/scope.hash.md"],
+        "fidelity_level": "Active"
+      },
+      "directives.v-cloak": {
+        "file_path": "@root/src/directives/v-cloak.ts",
+        "hash_reference": "@root/hashes/src/directives/v-cloak.hash.md",
+        "grammar_ref": "@root/hashes/grammar/vue.hash.md",
+        "dependencies": ["@root/hashes/src/runtime/scope.hash.md"],
+        "fidelity_level": "Active"
+      },
+      "directives.index": {
+        "file_path": "@root/src/directives/index.ts",
+        "hash_reference": null,
+        "grammar_ref": "@root/hashes/grammar/typescript.hash.md",
         "dependencies": [
-          "@root/hashes/src/runtime/scope.hash.md"
+          "@root/hashes/src/directives/v-for.hash.md",
+          "@root/hashes/src/directives/v-if.hash.md",
+          "@root/hashes/src/directives/v-model.hash.md",
+          "@root/hashes/src/directives/v-show.hash.md",
+          "@root/hashes/src/directives/v-bind.hash.md",
+          "@root/hashes/src/directives/v-once.hash.md",
+          "@root/hashes/src/directives/v-pre.hash.md",
+          "@root/hashes/src/directives/v-memo.hash.md",
+          "@root/hashes/src/directives/v-cloak.hash.md"
         ],
         "fidelity_level": "Active"
       },
