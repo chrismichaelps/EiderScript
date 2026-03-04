@@ -17,6 +17,24 @@
         "risk": "Medium"
       },
       "commit_ref": "HEAD"
+    },
+    {
+      "state_id": "BigInt:0x3",
+      "timestamp": "2026-03-03T19:00:00Z",
+      "logic_delta": {
+        "intent": "F2.5: Magic value extraction — EiderConstValues via Effect.Config, eliminated all hardcoded strings from compiler/parser/runtime",
+        "risk": "Low"
+      },
+      "commit_ref": "HEAD"
+    },
+    {
+      "state_id": "BigInt:0x4",
+      "timestamp": "2026-03-03T19:38:00Z",
+      "logic_delta": {
+        "intent": "F3: Hash shards for directives (v-for, v-if, v-model, v-show, v-bind), Tailwind scanner, scoped CSS injector, morphdom patcher, eider.config — FMCF Track 2 complete",
+        "risk": "Low"
+      },
+      "commit_ref": "HEAD"
     }
   ]
 }

@@ -1,6 +1,6 @@
 {
   "shard_id": "@root",
-  "state_anchor": "BigInt:0x2",
+  "state_anchor": "BigInt:0x4",
   "parent_bridge": null,
   "git_anchor": "HEAD",
   "cache_integrity": "VERIFIED",
@@ -179,8 +179,95 @@
         "grammar_ref": "@root/hashes/grammar/typescript.hash.md",
         "dependencies": [
           "@root/hashes/src/compiler/component.hash.md",
-          "@root/hashes/src/compiler/store.hash.md"
+          "@root/hashes/src/compiler/store.hash.md",
+          "@root/hashes/src/styles/tailwind.scanner.hash.md"
         ],
+        "fidelity_level": "Active"
+      },
+      "config.eider": {
+        "file_path": "@root/src/config/eider.config.ts",
+        "hash_reference": "@root/hashes/src/config/eider.config.hash.md",
+        "grammar_ref": "@root/hashes/grammar/effect.hash.md",
+        "dependencies": [],
+        "fidelity_level": "Active"
+      },
+      "directives.v-for": {
+        "file_path": "@root/src/directives/v-for.ts",
+        "hash_reference": "@root/hashes/src/directives/v-for.hash.md",
+        "grammar_ref": "@root/hashes/grammar/vue.hash.md",
+        "dependencies": [
+          "@root/hashes/src/runtime/scope.hash.md"
+        ],
+        "fidelity_level": "Active"
+      },
+      "directives.v-if": {
+        "file_path": "@root/src/directives/v-if.ts",
+        "hash_reference": "@root/hashes/src/directives/v-if.hash.md",
+        "grammar_ref": "@root/hashes/grammar/vue.hash.md",
+        "dependencies": [
+          "@root/hashes/src/runtime/scope.hash.md"
+        ],
+        "fidelity_level": "Active"
+      },
+      "directives.v-model": {
+        "file_path": "@root/src/directives/v-model.ts",
+        "hash_reference": "@root/hashes/src/directives/v-model.hash.md",
+        "grammar_ref": "@root/hashes/grammar/vue.hash.md",
+        "dependencies": [
+          "@root/hashes/src/runtime/scope.hash.md"
+        ],
+        "fidelity_level": "Active"
+      },
+      "directives.v-show": {
+        "file_path": "@root/src/directives/v-show.ts",
+        "hash_reference": "@root/hashes/src/directives/v-show.hash.md",
+        "grammar_ref": "@root/hashes/grammar/vue.hash.md",
+        "dependencies": [
+          "@root/hashes/src/runtime/scope.hash.md"
+        ],
+        "fidelity_level": "Active"
+      },
+      "directives.v-bind": {
+        "file_path": "@root/src/directives/v-bind.ts",
+        "hash_reference": "@root/hashes/src/directives/v-bind.hash.md",
+        "grammar_ref": "@root/hashes/grammar/vue.hash.md",
+        "dependencies": [
+          "@root/hashes/src/runtime/scope.hash.md"
+        ],
+        "fidelity_level": "Active"
+      },
+      "directives.index": {
+        "file_path": "@root/src/directives/index.ts",
+        "hash_reference": "@root/hashes/src/directives/v-for.hash.md",
+        "grammar_ref": "@root/hashes/grammar/typescript.hash.md",
+        "dependencies": [
+          "@root/hashes/src/directives/v-for.hash.md",
+          "@root/hashes/src/directives/v-if.hash.md",
+          "@root/hashes/src/directives/v-model.hash.md",
+          "@root/hashes/src/directives/v-show.hash.md",
+          "@root/hashes/src/directives/v-bind.hash.md"
+        ],
+        "fidelity_level": "Active"
+      },
+      "styles.tailwind-scanner": {
+        "file_path": "@root/src/styles/tailwind.scanner.ts",
+        "hash_reference": "@root/hashes/src/styles/tailwind.scanner.hash.md",
+        "grammar_ref": "@root/hashes/grammar/typescript.hash.md",
+        "dependencies": [],
+        "fidelity_level": "Active"
+      },
+      "styles.scoped-injector": {
+        "file_path": "@root/src/styles/scoped.injector.ts",
+        "hash_reference": "@root/hashes/src/styles/scoped.injector.hash.md",
+        "grammar_ref": "@root/hashes/grammar/typescript.hash.md",
+        "dependencies": [],
+        "fidelity_level": "Active"
+      },
+      "dom.morphdom-patcher": {
+        "file_path": "@root/src/dom/morphdom.patcher.ts",
+        "hash_reference": "@root/hashes/src/dom/morphdom.patcher.hash.md",
+        "grammar_ref": "@root/hashes/grammar/effect.hash.md",
+        "dependencies": [],
         "fidelity_level": "Active"
       }
     }
