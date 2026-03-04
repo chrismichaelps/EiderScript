@@ -1,6 +1,7 @@
 /** @EiderScript.Parser.YamlParser - Parses raw YAML text into validated AST */
 import { Effect } from 'effect'
 import { load } from 'js-yaml'
+import { normalizeYaml } from './yaml.normalizer.js'
 import { ComponentSchema } from '../schema/component.schema.js'
 import { StoreSchema } from '../schema/store.schema.js'
 import { AppSchema } from '../schema/router.schema.js'
@@ -37,7 +38,7 @@ export const parseYaml = (
     const eiderConstants = yield* EiderConstValues
 
     const parsed = yield* Effect.try({
-      try: () => load(raw),
+      try: () => load(normalizeYaml(raw), { json: true }),
       catch: (e) =>
         new ParseError({ message: `${eiderConstants.errParseFailed} ${String(e)}`, source: raw }),
     })
