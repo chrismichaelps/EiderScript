@@ -9,6 +9,7 @@ export interface Scope {
   readonly methods: Record<string, (...args: unknown[]) => unknown>
   readonly props: Record<string, unknown>
   evaluate: (expr: string) => unknown
+  createChild: (localProps: Record<string, unknown>) => Scope
 }
 
 const exprParser = new Parser()
@@ -66,9 +67,9 @@ function jsEval(expr: string, scopeProxy: Record<string, unknown>): unknown {
 /** @EiderScript.Runtime.Scope - Builds reactive evaluation scope */
 export function createScope(
   props: Record<string, unknown>,
-  signalDefs: Record<string, unknown>,
-  computedDefs: Record<string, string | unknown>,
-  methodDefs: Record<string, string>,
+  signalDefs: Record<string, unknown> = {},
+  computedDefs: Record<string, string | unknown> = {},
+  methodDefs: Record<string, string> = {},
   interpolationPrefix = '{{',
 ): Scope {
   const signals: Record<string, Ref<unknown>> = {}
@@ -114,5 +115,17 @@ export function createScope(
     methods,
     props,
     evaluate: (expr: string) => jsEval(expr, scopeProxy),
+    createChild: (localProps: Record<string, unknown>) => {
+      const mergedProps = { ...props, ...localProps }
+      const childScopeProxy = { ...scopeProxy, ...localProps }
+      return {
+        signals,
+        computeds: computedRefs,
+        methods,
+        props: mergedProps,
+        evaluate: (expr: string) => jsEval(expr, childScopeProxy),
+        createChild: (nestedProps) => createScope({ ...mergedProps, ...nestedProps })
+      }
+    }
   }
 }

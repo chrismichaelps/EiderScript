@@ -55,6 +55,9 @@ export function compileVFor(
       computeds: scope.computeds,
       methods: scope.methods,
       props: { ...scope.props, ...iterVars },
+      createChild: (localProps: Record<string, unknown>) => {
+        return scope.createChild({ ...iterVars, ...localProps })
+      },
       evaluate: (e: string) => {
         try {
           // Use a simple variable substitution for iteration vars

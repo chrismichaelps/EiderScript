@@ -13,6 +13,10 @@ import { compileVOnce } from '../directives/v-once.js'
 import { compileVPre } from '../directives/v-pre.js'
 import { compileVMemo } from '../directives/v-memo.js'
 import { compileVCloak } from '../directives/v-cloak.js'
+import { compileVText } from '../directives/v-text.js'
+import { compileVHtml } from '../directives/v-html.js'
+import { compileVOn } from '../directives/v-on.js'
+import { compileVSlot } from '../directives/v-slot.js'
 import { applyFilters, splitPipeExpr } from '../runtime/filters.js'
 
 export interface TemplateCompilerConfig {
@@ -37,6 +41,10 @@ const VALID_DIRECTIVES = new Set([
   'v-pre',
   'v-memo',
   'v-cloak',
+  'v-text',
+  'v-html',
+  'v-on',
+  'v-slot',
 ])
 
 /** @EiderScript.Compiler.Template - Parsed tag descriptor */
@@ -56,22 +64,13 @@ interface TagDescriptor {
     vPre?: boolean
     vMemo?: string
     vCloak?: boolean
+    vText?: string
+    vHtml?: string
+    vOn?: Record<string, string>
+    vSlot?: { name: string; expr?: string }
   }
 }
 
-/** @EiderScript.Compiler.Template - Validates directive key, throws on unknown */
-function validateDirective(key: string, value: unknown): void {
-  if (key.startsWith('v-')) {
-    const directiveName = key.includes('=')
-      ? key.slice(0, key.indexOf('='))
-      : key
-    if (!VALID_DIRECTIVES.has(directiveName)) {
-      throw new Error(
-        `${Tags.COMPILE_ERROR}: Unknown directive "${directiveName}"`,
-      )
-    }
-  }
-}
 
 /** @EiderScript.Compiler.Template - Parses "tag .class #id attr=val @ev=fn :prop=expr" key */
 function parseTagKey(
@@ -123,6 +122,42 @@ function parseTagKey(
       directives.vMemo = part.slice('v-memo='.length)
     } else if (part === 'v-cloak') {
       directives.vCloak = true
+    } else if (part.startsWith('v-text=')) {
+      directives.vText = part.slice('v-text='.length)
+    } else if (part.startsWith('v-html=')) {
+      directives.vHtml = part.slice('v-html='.length)
+    } else if (part.startsWith('v-on:') || part.startsWith('@') || part.startsWith('v-on=')) {
+      if (!directives.vOn) directives.vOn = {}
+      if (part.startsWith('v-on=')) {
+        directives.vOn[''] = part.slice('v-on='.length)
+      } else {
+        const separatorIdx = part.startsWith('@') ? 1 : 'v-on:'.length
+        const [eventName, ...rest] = part.slice(separatorIdx).split('=')
+        const expr = rest.join('=')
+        if (eventName) directives.vOn[eventName] = expr
+      }
+    } else if (part.startsWith('v-slot:') || part.startsWith('#') || part === 'v-slot' || part.startsWith('v-slot=')) {
+      directives.vSlot = { name: 'default' }
+      if (part === 'v-slot') {
+        // just `v-slot`
+      } else if (part.startsWith('v-slot=')) {
+        // default slot with props
+        directives.vSlot.expr = part.slice('v-slot='.length)
+      } else {
+        // named slot
+        const prefixLen = part.startsWith('#') ? 1 : 'v-slot:'.length
+        const [slotNameRaw, ...exprRest] = part.slice(prefixLen).split('=')
+        let slotName = slotNameRaw || 'default'
+        if (slotName.startsWith('[') && slotName.endsWith(']')) {
+          try {
+            slotName = String(scope.evaluate(slotName.slice(1, -1)))
+          } catch {
+            slotName = slotName.slice(1, -1)
+          }
+        }
+        directives.vSlot.name = slotName
+        if (exprRest.length > 0) directives.vSlot.expr = exprRest.join('=')
+      }
     } else if (part.includes('=')) {
       const eqIdx = part.indexOf('=')
       const attrName = part.slice(0, eqIdx)
@@ -141,7 +176,7 @@ function parseTagKey(
   return { tag, attrs, on, directives }
 }
 
-/** @EiderScript.Compiler.Template - Interpolates {{ expr }} and {{ expr | filter }} in text */
+/** Interpolates {{ expr }} and {{ expr | filter }} in text */
 export function interpolate(text: string, scope: Scope): string {
   return text.replace(Regex.INTERPOLATION, (_, rawExpr: string) => {
     const { expr, pipes } = splitPipeExpr(rawExpr.trim())
@@ -151,12 +186,7 @@ export function interpolate(text: string, scope: Scope): string {
   })
 }
 
-/** @EiderScript.Compiler.Template - Converts a YAML template node → VNode
- *
- * Special reserved keys:
- *   `text:` → emitted as interpolated text child, not an element
- *   `attrs:` → merged into parent element attributes (inline YAML attrs block)
- */
+/** Converts a YAML template node → VNode */
 export function compileNode(
   node: unknown,
   scope: Scope,
@@ -171,8 +201,6 @@ export function compileNode(
   const vnodes: Array<VNode | string> = []
 
   // Pre-pass: group v-if / v-else-if / v-else chains
-  // We convert them to a grouped structure so compileVIfChain can handle them.
-  // All other entries pass through unchanged.
   type GroupedEntry =
     | { kind: 'ifChain'; branches: VIfBranch[] }
     | { kind: 'single'; key: string; value: unknown }
@@ -183,7 +211,7 @@ export function compileNode(
     const [key, value] = entries[i]!
     const firstTag = key.trim().split(/\s+/)[0] ?? ''
 
-    // Validate directive keys (except text: and attrs:)
+    // Validate directive keys
     if (firstTag !== 'text' && firstTag !== 'attrs') {
       const tagParts = key.trim().split(/\s+/)
       for (const part of tagParts) {
@@ -200,7 +228,7 @@ export function compileNode(
       }
     }
 
-    // Skip `text:` and `attrs:` from chain grouping — handle later
+    // Skip `text:` and `attrs:` from chain grouping
     if (firstTag === 'text' || firstTag === 'attrs') {
       grouped.push({ kind: 'single', key, value })
       i++
@@ -256,7 +284,7 @@ export function compileNode(
 
     const { key, value } = entry
 
-    // `text:` special key — emit as interpolated text child
+    // `text:` special key
     const baseTag = key.trim().split(/\s+/)[0] ?? ''
     if (baseTag === 'text') {
       const textContent =
@@ -267,7 +295,7 @@ export function compileNode(
       continue
     }
 
-    // `attrs:` special key — skip (handled by parent's parseTagKey)
+    // `attrs:` special key
     if (baseTag === 'attrs') continue
 
     const { tag, attrs, on, directives } = parseTagKey(key, scope, config)
@@ -290,7 +318,7 @@ export function compileNode(
       onObj[`on${ev.charAt(0).toUpperCase()}${ev.slice(1)}`] = fn
     }
 
-    // Handle inline `attrs:` sub-key for the current element
+    // Handle inline `attrs:` sub-key
     let inlineAttrs: Record<string, unknown> = {}
     if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
       const valueObj = value as Record<string, unknown>
@@ -321,34 +349,62 @@ export function compileNode(
         ? compileVBindSpread(directives.vBindSpread, scope)
         : {}
 
-    const props = {
+    // v-on listeners mapping
+    const vOnHandlers: Record<string, unknown> = {}
+    if (directives.vOn) {
+      for (const [evtName, expr] of Object.entries(directives.vOn)) {
+        Object.assign(vOnHandlers, compileVOn(evtName, expr, scope))
+      }
+    }
+
+    const props: Record<string, unknown> = {
       ...attrs,
       ...inlineAttrs,
       ...onObj,
+      ...vOnHandlers,
       ...vModelProps,
       ...vShowProps,
       ...vBindSpreadProps,
     }
 
     // Build children
-    const children: Array<VNode | string> | string | undefined = (() => {
-      if (typeof value === 'string') {
-        return interpolate(value, scope)
-      }
-      if (typeof value !== 'object' || value === null) {
-        return String(value ?? '')
-      }
-      // Nested object — compile children, filtering out `attrs:` sub-node
-      const childEntries = Object.entries(
-        value as Record<string, unknown>,
-      ).filter(([k]) => k.trim().split(/\s+/)[0] !== 'attrs')
-      const childNode = compileNode(
-        Object.fromEntries(childEntries),
+    let children: Array<VNode | string> | string | undefined = undefined
+
+    if (directives.vHtml !== undefined) {
+      // patch innerHTML prop via morphdom wrapper
+      const htmlContent = compileVHtml(directives.vHtml, scope)
+      props['innerHTML'] = htmlContent
+    } else if (directives.vText !== undefined) {
+      children = compileVText(directives.vText, scope)
+    } else if (directives.vSlot !== undefined) {
+      const slotDef = compileVSlot(
+        directives.vSlot.name,
         scope,
-        config,
+        directives.vSlot.expr,
       )
-      return childNode !== null ? [childNode as VNode] : []
-    })()
+      props['data-eider-slot'] = slotDef.name
+      if (directives.vSlot.expr) {
+        props['data-eider-slot-expr'] = directives.vSlot.expr
+      }
+    }
+    if (!children && directives.vHtml === undefined) {
+      if (typeof value === 'string') {
+        children = interpolate(value, scope)
+      } else if (typeof value !== 'object' || value === null) {
+        children = String(value ?? '')
+      } else {
+        // Nested object — compile children, filtering out `attrs:` sub-node
+        const childEntries = Object.entries(
+          value as Record<string, unknown>,
+        ).filter(([k]) => k.trim().split(/\s+/)[0] !== 'attrs')
+        const childNode = compileNode(
+          Object.fromEntries(childEntries),
+          scope,
+          config,
+        )
+        children = childNode !== null ? [childNode as VNode] : []
+      }
+    }
 
     // v-pre: skip compilation, render raw content
     if (directives.vPre === true && typeof value === 'string') {

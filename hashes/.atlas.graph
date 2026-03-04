@@ -1,6 +1,6 @@
 {
   "graph_version": "1.0",
-  "state_anchor": "BigInt:0x7",
+  "state_anchor": "BigInt:0x8",
   "description": "Directional dependency edges. When an upstream node changes, all downstream nodes are flagged DIRTY.",
   "grammar_refs": {
     "typescript": "@root/hashes/grammar/typescript.hash.md",
@@ -35,7 +35,15 @@
     { "from": "src/directives/v-once",            "to": "hashes/grammar/vue",          "type": "SCHEMA_CONTRACT",  "impact": "MEDIUM", "reason": "Static VNode rendering" },
     { "from": "src/directives/v-pre",             "to": "hashes/grammar/vue",          "type": "SCHEMA_CONTRACT",  "impact": "MEDIUM", "reason": "createStaticVNode for raw content" },
     { "from": "src/directives/v-memo",            "to": "hashes/grammar/vue",          "type": "SCHEMA_CONTRACT",  "impact": "MEDIUM", "reason": "Conditional re-render based on deps" },
-    { "from": "src/directives/v-cloak",           "to": "hashes/grammar/vue",          "type": "SCHEMA_CONTRACT",  "impact": "MEDIUM", "reason": "Compile-time directive marker" }
+    { "from": "src/directives/v-cloak",           "to": "hashes/grammar/vue",          "type": "SCHEMA_CONTRACT",  "impact": "MEDIUM", "reason": "Compile-time directive marker" },
+    { "from": "src/compiler/template.compiler",   "to": "src/directives/v-text",       "type": "LAYER_DEPENDENCY", "impact": "MEDIUM", "reason": "Compiles v-text directive" },
+    { "from": "src/compiler/template.compiler",   "to": "src/directives/v-html",       "type": "LAYER_DEPENDENCY", "impact": "MEDIUM", "reason": "Compiles v-html directive" },
+    { "from": "src/compiler/template.compiler",   "to": "src/directives/v-on",         "type": "LAYER_DEPENDENCY", "impact": "MEDIUM", "reason": "Compiles v-on directive" },
+    { "from": "src/compiler/template.compiler",   "to": "src/directives/v-slot",       "type": "LAYER_DEPENDENCY", "impact": "MEDIUM", "reason": "Compiles v-slot directive" },
+    { "from": "src/directives/v-text",            "to": "hashes/grammar/vue",          "type": "SCHEMA_CONTRACT",  "impact": "MEDIUM", "reason": "Native text injections constraint" },
+    { "from": "src/directives/v-html",            "to": "hashes/grammar/vue",          "type": "SCHEMA_CONTRACT",  "impact": "MEDIUM", "reason": "Native html injections constraint" },
+    { "from": "src/directives/v-on",              "to": "hashes/grammar/vue",          "type": "SCHEMA_CONTRACT",  "impact": "MEDIUM", "reason": "Native DOM event capture behaviors" },
+    { "from": "src/directives/v-slot",            "to": "hashes/grammar/vue",          "type": "SCHEMA_CONTRACT",  "impact": "MEDIUM", "reason": "Structural slot property framing" }
   ],
   "dirty_propagation_rule": "When a node's fidelity_level changes to DIRTY, recursively mark all nodes reachable via outgoing edges as DIRTY"
 }

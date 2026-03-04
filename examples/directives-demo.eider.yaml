@@ -1,0 +1,74 @@
+name: DirectivesDemoApp
+global: {}
+router:
+  routes:
+    - path: /
+      component: DirectivesDemo
+
+components:
+  - name: DirectivesDemo
+    signals:
+      message: "Hello, EiderScript!"
+      rawHtml: "<span class='text-blue-500 font-bold'>This is raw HTML</span>"
+      clicks: 0
+      user: 
+        name: "Chris"
+        role: "Admin"
+    methods:
+      increment: "clicks = clicks + 1"
+      reset: "clicks = 0"
+
+    template:
+      div .min-h-screen .bg-gray-50 .p-8:
+        div .max-w-3xl .mx-auto .space-y-8:
+        
+          # Header
+          h1 .text-3xl .font-bold: "Vue Directives Implementation Showcase"
+          
+          # v-text Demo
+          section-text .bg-white .p-6 .rounded-xl .shadow-sm:
+            h2 .text-xl .font-semibold .mb-4: "v-text Demo"
+            p1 .text-gray-600 .mb-2: "This text uses {{ interpolation }} normally."
+            p2 .text-gray-900:
+              v-text: message
+              text: "This text is replaced entirely."
+
+          # v-html Demo
+          section-html .bg-white .p-6 .rounded-xl .shadow-sm:
+            h2 .text-xl .font-semibold .mb-4: "v-html Demo"
+            div .p-4 .bg-gray-100 .rounded-lg:
+              v-html: rawHtml
+
+          # v-on Demo
+          section-on .bg-white .p-6 .rounded-xl .shadow-sm:
+            h2 .text-xl .font-semibold .mb-4: "v-on Demo"
+            div .flex .items-center .gap-4:
+              button-inc .px-4 .py-2 .bg-indigo-600 .text-white .rounded-lg:
+                "@click": increment
+                text: "Increment Counter"
+              button-res .px-4 .py-2 .bg-gray-200 .text-gray-700 .rounded-lg:
+                "@click": reset
+                text: "Reset"
+            p .mt-4 .text-xl:
+              text: "Clicks: {{ clicks }}"
+              
+          # v-slot Demo
+          section-slot .bg-white .p-6 .rounded-xl .shadow-sm:
+            h2 .text-xl .font-semibold .mb-4: "v-slot Demo"
+            Card .mt-4:
+              template-header "#header":
+                h3 .font-bold: "User Profile"
+              template-body "#default={ profile }":
+                div .bg-indigo-50 .p-4 .rounded-lg:
+                  p-name: "Name: {{ profile.name }}"
+                  p-role: "Role: {{ profile.role }}"
+
+  # Helper Component to demonstrate slots
+  - name: Card
+    template:
+      div .border .border-gray-200 .rounded-xl .overflow-hidden:
+        div .bg-gray-100 .px-4 .py-3 .border-b .border-gray-200:
+          slot: header
+        div .p-4:
+          slot default:
+            v-bind: "{ profile: parent.user }"
