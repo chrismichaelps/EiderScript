@@ -13,7 +13,7 @@ export function generateScopeId(componentName: string): string {
 /** @EiderScript.Styles.ScopedInjector - Scopes CSS rules with attribute selector */
 function scopeCSS(css: string, scopeAttr: string): string {
   // Prefix each rule selector with [scopeAttr]
-  return css.replace(/([^{}]+)\{/g, (match, selector: string) => {
+  return css.replace(/([^{}]+)\{/g, (_match, selector: string) => {
     const scoped = selector
       .split(',')
       .map((s) => `[${scopeAttr}] ${s.trim()}`)

@@ -1,21 +1,20 @@
 /** @EiderScript.Compiler.Component - ComponentAST → Vue component definition object */
 import {
   computed,
-  h,
   onBeforeMount,
   onMounted,
   onUnmounted,
   onUpdated,
   watch,
 } from 'vue'
-import { Effect, Layer } from 'effect'
+import { Effect } from 'effect'
 import { Parser } from 'expr-eval'
 import type { ComponentAST } from '../schema/component.schema.js'
 import { createScope } from '../runtime/scope.js'
 import { CompileError } from '../effects/errors.js'
 import { LiveServices } from '../effects/layers.js'
 import { compileNode, type TemplateCompilerConfig } from './template.compiler.js'
-import { EiderConstValues, Tags } from '../config/constants.js'
+import { EiderConstValues } from '../config/constants.js'
 
 const exprParser = new Parser()
 
