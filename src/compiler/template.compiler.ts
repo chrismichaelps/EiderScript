@@ -2,13 +2,17 @@
 import { h } from 'vue'
 import type { VNode } from 'vue'
 import type { Scope } from '../runtime/scope.js'
-import { Regex } from '../config/constants.js'
+import { Regex, Tags } from '../config/constants.js'
 import { compileVFor } from '../directives/v-for.js'
 import { compileVIf, compileVIfChain } from '../directives/v-if.js'
 import type { VIfBranch } from '../directives/v-if.js'
 import { compileVModel } from '../directives/v-model.js'
 import { compileVShow } from '../directives/v-show.js'
 import { compileVBind, compileVBindSpread } from '../directives/v-bind.js'
+import { compileVOnce } from '../directives/v-once.js'
+import { compileVPre } from '../directives/v-pre.js'
+import { compileVMemo } from '../directives/v-memo.js'
+import { compileVCloak } from '../directives/v-cloak.js'
 import { applyFilters, splitPipeExpr } from '../runtime/filters.js'
 
 export interface TemplateCompilerConfig {
@@ -19,6 +23,21 @@ export interface TemplateCompilerConfig {
   fragmentHtmlTag: string
   directiveRe: RegExp
 }
+
+/** @EiderScript.Compiler.Template - Valid directive names */
+const VALID_DIRECTIVES = new Set([
+  'v-if',
+  'v-else-if',
+  'v-else',
+  'v-for',
+  'v-model',
+  'v-show',
+  'v-bind',
+  'v-once',
+  'v-pre',
+  'v-memo',
+  'v-cloak',
+])
 
 /** @EiderScript.Compiler.Template - Parsed tag descriptor */
 interface TagDescriptor {
@@ -33,11 +52,33 @@ interface TagDescriptor {
     vBindSpread?: string
     vElseIf?: string
     vElse?: boolean
+    vOnce?: boolean
+    vPre?: boolean
+    vMemo?: string
+    vCloak?: boolean
+  }
+}
+
+/** @EiderScript.Compiler.Template - Validates directive key, throws on unknown */
+function validateDirective(key: string, value: unknown): void {
+  if (key.startsWith('v-')) {
+    const directiveName = key.includes('=')
+      ? key.slice(0, key.indexOf('='))
+      : key
+    if (!VALID_DIRECTIVES.has(directiveName)) {
+      throw new Error(
+        `${Tags.COMPILE_ERROR}: Unknown directive "${directiveName}"`,
+      )
+    }
   }
 }
 
 /** @EiderScript.Compiler.Template - Parses "tag .class #id attr=val @ev=fn :prop=expr" key */
-function parseTagKey(key: string, scope: Scope, config: TemplateCompilerConfig): TagDescriptor {
+function parseTagKey(
+  key: string,
+  scope: Scope,
+  config: TemplateCompilerConfig,
+): TagDescriptor {
   const parts = key.trim().split(/\s+/)
   const tag = parts[0] ?? config.defaultHtmlTag
   const attrs: Record<string, unknown> = {}
@@ -74,6 +115,14 @@ function parseTagKey(key: string, scope: Scope, config: TemplateCompilerConfig):
       directives.vShow = part.slice('v-show='.length)
     } else if (part.startsWith('v-bind=')) {
       directives.vBindSpread = part.slice('v-bind='.length)
+    } else if (part === 'v-once') {
+      directives.vOnce = true
+    } else if (part === 'v-pre') {
+      directives.vPre = true
+    } else if (part.startsWith('v-memo=')) {
+      directives.vMemo = part.slice('v-memo='.length)
+    } else if (part === 'v-cloak') {
+      directives.vCloak = true
     } else if (part.includes('=')) {
       const eqIdx = part.indexOf('=')
       const attrName = part.slice(0, eqIdx)
@@ -108,7 +157,11 @@ export function interpolate(text: string, scope: Scope): string {
  *   `text:` → emitted as interpolated text child, not an element
  *   `attrs:` → merged into parent element attributes (inline YAML attrs block)
  */
-export function compileNode(node: unknown, scope: Scope, config: TemplateCompilerConfig): VNode | string | null {
+export function compileNode(
+  node: unknown,
+  scope: Scope,
+  config: TemplateCompilerConfig,
+): VNode | string | null {
   if (typeof node === 'string') return interpolate(node, scope)
   if (typeof node !== 'object' || node === null) return String(node)
 
@@ -129,6 +182,23 @@ export function compileNode(node: unknown, scope: Scope, config: TemplateCompile
   while (i < entries.length) {
     const [key, value] = entries[i]!
     const firstTag = key.trim().split(/\s+/)[0] ?? ''
+
+    // Validate directive keys (except text: and attrs:)
+    if (firstTag !== 'text' && firstTag !== 'attrs') {
+      const tagParts = key.trim().split(/\s+/)
+      for (const part of tagParts) {
+        if (part.startsWith('v-')) {
+          const directiveName = part.includes('=')
+            ? part.slice(0, part.indexOf('='))
+            : part
+          if (!VALID_DIRECTIVES.has(directiveName)) {
+            throw new Error(
+              `${Tags.COMPILE_ERROR}: Unknown directive "${directiveName}"`,
+            )
+          }
+        }
+      }
+    }
 
     // Skip `text:` and `attrs:` from chain grouping — handle later
     if (firstTag === 'text' || firstTag === 'attrs') {
@@ -151,7 +221,11 @@ export function compileNode(node: unknown, scope: Scope, config: TemplateCompile
           const [nextKey, nextValue] = entries[j]!
           const nDesc = parseTagKey(nextKey, scope, config)
           if (nDesc.directives.vElseIf !== undefined) {
-            branches.push({ directive: 'v-else-if', condition: nDesc.directives.vElseIf, node: nextValue })
+            branches.push({
+              directive: 'v-else-if',
+              condition: nDesc.directives.vElseIf,
+              node: nextValue,
+            })
             j++
           } else if (nDesc.directives.vElse === true) {
             branches.push({ directive: 'v-else', node: nextValue })
@@ -185,7 +259,10 @@ export function compileNode(node: unknown, scope: Scope, config: TemplateCompile
     // `text:` special key — emit as interpolated text child
     const baseTag = key.trim().split(/\s+/)[0] ?? ''
     if (baseTag === 'text') {
-      const textContent = typeof value === 'string' ? interpolate(value, scope) : String(value ?? '')
+      const textContent =
+        typeof value === 'string'
+          ? interpolate(value, scope)
+          : String(value ?? '')
       if (textContent) vnodes.push(textContent)
       continue
     }
@@ -197,7 +274,13 @@ export function compileNode(node: unknown, scope: Scope, config: TemplateCompile
 
     // v-for: expand into multiple vnodes
     if (directives.vFor !== undefined) {
-      const items = compileVFor(directives.vFor, value, scope, config, compileNode)
+      const items = compileVFor(
+        directives.vFor,
+        value,
+        scope,
+        config,
+        compileNode,
+      )
       vnodes.push(...items)
       continue
     }
@@ -211,27 +294,41 @@ export function compileNode(node: unknown, scope: Scope, config: TemplateCompile
     let inlineAttrs: Record<string, unknown> = {}
     if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
       const valueObj = value as Record<string, unknown>
-      if ('attrs' in valueObj && typeof valueObj['attrs'] === 'object' && valueObj['attrs'] !== null) {
+      if (
+        'attrs' in valueObj &&
+        typeof valueObj['attrs'] === 'object' &&
+        valueObj['attrs'] !== null
+      ) {
         inlineAttrs = valueObj['attrs'] as Record<string, unknown>
       }
     }
 
     // v-model props
-    const vModelProps = directives.vModel !== undefined
-      ? compileVModel(directives.vModel, scope)
-      : {}
+    const vModelProps =
+      directives.vModel !== undefined
+        ? compileVModel(directives.vModel, scope)
+        : {}
 
     // v-show props
-    const vShowProps = directives.vShow !== undefined
-      ? compileVShow(directives.vShow, scope)
-      : {}
+    const vShowProps =
+      directives.vShow !== undefined
+        ? compileVShow(directives.vShow, scope)
+        : {}
 
     // v-bind spread props
-    const vBindSpreadProps = directives.vBindSpread !== undefined
-      ? compileVBindSpread(directives.vBindSpread, scope)
-      : {}
+    const vBindSpreadProps =
+      directives.vBindSpread !== undefined
+        ? compileVBindSpread(directives.vBindSpread, scope)
+        : {}
 
-    const props = { ...attrs, ...inlineAttrs, ...onObj, ...vModelProps, ...vShowProps, ...vBindSpreadProps }
+    const props = {
+      ...attrs,
+      ...inlineAttrs,
+      ...onObj,
+      ...vModelProps,
+      ...vShowProps,
+      ...vBindSpreadProps,
+    }
 
     // Build children
     const children: Array<VNode | string> | string | undefined = (() => {
@@ -242,14 +339,44 @@ export function compileNode(node: unknown, scope: Scope, config: TemplateCompile
         return String(value ?? '')
       }
       // Nested object — compile children, filtering out `attrs:` sub-node
-      const childEntries = Object.entries(value as Record<string, unknown>).filter(
-        ([k]) => k.trim().split(/\s+/)[0] !== 'attrs'
+      const childEntries = Object.entries(
+        value as Record<string, unknown>,
+      ).filter(([k]) => k.trim().split(/\s+/)[0] !== 'attrs')
+      const childNode = compileNode(
+        Object.fromEntries(childEntries),
+        scope,
+        config,
       )
-      const childNode = compileNode(Object.fromEntries(childEntries), scope, config)
       return childNode !== null ? [childNode as VNode] : []
     })()
 
-    vnodes.push(h(tag, props, children))
+    // v-pre: skip compilation, render raw content
+    if (directives.vPre === true && typeof value === 'string') {
+      const vPreVNode = compileVPre(value)
+      vnodes.push(vPreVNode)
+      continue
+    }
+
+    let vnode = h(tag, props, children)
+
+    // v-once: mark as static, never re-renders
+    if (directives.vOnce === true) {
+      vnode = compileVOnce(value, scope, config, compileNode) ?? vnode
+    }
+
+    // v-memo: conditional re-render based on deps
+    if (directives.vMemo !== undefined) {
+      vnode =
+        compileVMemo(directives.vMemo, value, scope, config, compileNode) ??
+        vnode
+    }
+
+    // v-cloak: add cloak attribute
+    if (directives.vCloak === true) {
+      vnode = compileVCloak(value, scope, config, compileNode) ?? vnode
+    }
+
+    vnodes.push(vnode)
   }
 
   return vnodes.length === 1

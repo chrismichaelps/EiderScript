@@ -1,0 +1,63 @@
+name: StaticContentApp
+router:
+  routes:
+    - path: /
+      component: StaticDemo
+
+components:
+  - name: StaticDemo
+    signals:
+      count: 0
+      show: true
+      staticMsg: "This never changes"
+    computeds:
+      doubleCount: count * 2
+    methods:
+      increment: count = count + 1
+      toggle: show = not show
+    template:
+      div .container:
+        h1 .title: Directive Showcase
+
+        section-1:
+          text: v-once - renders once
+          box-1:
+            class: box v-once
+            content-1:
+              text: Static {{ count }}
+            content-2:
+              text: Double {{ doubleCount }}
+
+        section-2:
+          text: v-pre - raw content
+          pre-box:
+            class: code v-pre
+            content:
+              text: "{{ raw interpolation }}"
+
+        section-3:
+          text: v-memo - conditional render
+          actions:
+            button @click=increment: Inc
+          memo-box:
+            class: info v-memo=count
+            text: Count memo {{ count }}
+
+        section-4:
+          text: v-cloak + v-show
+          panel:
+            class: panel v-cloak
+            visible:
+              text: Visible
+            hidden:
+              v-show: not(show)
+              text: Hidden
+
+        section-5:
+          text: Combined directives
+          actions:
+            button @click=toggle: Toggle
+          combined-box:
+            v-if: show
+            v-once: true
+            text: v-if + v-once
