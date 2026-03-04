@@ -21,7 +21,7 @@ export const ComponentSchema = (errComponentNameEmpty: string) => z.object({
   name: z.string().min(1, errComponentNameEmpty),
   props: z.record(z.string(), PropSchema).optional(),
   signals: z.record(z.string(), z.any()).optional(),
-  computeds: z.record(z.string(), z.string()).optional(),
+  computeds: z.record(z.string(), z.union([z.string(), z.array(z.any()), z.record(z.string(), z.any())])).optional(),
   methods: z.record(z.string(), z.string()).optional(),
   actions: z.record(z.string(), ActionSchema).optional(),
   watch: z.record(z.string(), WatchEntrySchema).optional(),

@@ -10,7 +10,7 @@ import { type TemplateCompilerConfig, compileNode } from '../compiler/template.c
 import { createScope } from './scope.js'
 import { RuntimeError } from '../effects/errors.js'
 import { EiderConstValues } from '../config/constants.js'
-import type { RouteComponent } from 'vue-router'
+import type { Router, RouteComponent } from 'vue-router'
 import type { AppAST } from '../schema/router.schema.js'
 import type { ComponentAST } from '../schema/component.schema.js'
 import type { StoreAST } from '../schema/store.schema.js'
@@ -30,6 +30,7 @@ export interface EiderAppInput {
 /** @EiderScript.Runtime.App - Resolved live application handle */
 export interface EiderApp {
   readonly vueApp: ReturnType<typeof createApp>
+  readonly router: Router | null
   readonly mount: (selector: string) => void
 }
 
@@ -83,7 +84,17 @@ export const createEiderApp = (
     }
     const appAst = appDoc.ast as AppAST
 
-    // Build root component 
+    // Compile inline components (embedded in app YAML under `components:`)
+    // These are already Zod-validated — no re-parsing needed.
+    for (const compAst of appAst.components ?? []) {
+      const component = yield* compileComponent(compAst).pipe(
+        Effect.mapError((e) => new RuntimeError({ message: e.message, cause: e })),
+      )
+      compiledComponents[compAst.name] = component
+    }
+
+    // Compile external component YAMLs (passed via input.components)
+    // External definitions override inline ones on name collision.
     const RootComponent = appAst.template
       ? {
         name: appAst.name,
@@ -130,6 +141,7 @@ export const createEiderApp = (
 
     return {
       vueApp,
+      router,
       mount: (selector: string) => vueApp.mount(selector),
     }
   }).pipe(

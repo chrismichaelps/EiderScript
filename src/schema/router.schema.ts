@@ -1,5 +1,6 @@
 /** @EiderScript.Schema.Router - Zod validation shapes for router and app YAML */
 import { z } from 'zod'
+import { ComponentSchema } from './component.schema.js'
 
 interface Route {
   path: string
@@ -24,6 +25,8 @@ export const AppSchema = z.object({
     .object({ routes: z.array(RouteSchema) })
     .optional(),
   template: z.any().optional(),
+  /** Inline component definitions — compiled in-order before router is built */
+  components: z.array(ComponentSchema('Component name must not be empty')).optional(),
 })
 
 export type RouteAST = Route

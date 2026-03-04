@@ -18,7 +18,13 @@ export const renderEider = (
     const app = yield* createEiderApp({ ...input, ssr: true })
 
     const html = yield* Effect.tryPromise({
-      try: () => renderToString(app.vueApp),
+      try: async () => {
+        if (app.router && app.router.getRoutes().length > 0) {
+          const firstRoute = app.router.getRoutes()[0]!
+          await app.router.push(firstRoute.path).catch(() => {})
+        }
+        return renderToString(app.vueApp)
+      },
       catch: (e) =>
         new RuntimeError({ message: `SSR render failed: ${String(e)}`, cause: e }),
     })

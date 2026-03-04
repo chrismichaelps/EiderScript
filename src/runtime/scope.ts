@@ -67,7 +67,7 @@ function jsEval(expr: string, scopeProxy: Record<string, unknown>): unknown {
 export function createScope(
   props: Record<string, unknown>,
   signalDefs: Record<string, unknown>,
-  computedDefs: Record<string, string>,
+  computedDefs: Record<string, string | unknown>,
   methodDefs: Record<string, string>,
   interpolationPrefix = '{{',
 ): Scope {
@@ -91,7 +91,11 @@ export function createScope(
 
   const computedRefs: Record<string, ComputedRef<unknown>> = {}
   for (const [key, expr] of Object.entries(computedDefs)) {
-    computedRefs[key] = computed(() => jsEval(expr, scopeProxy))
+    if (typeof expr === 'string') {
+      computedRefs[key] = computed(() => jsEval(expr, scopeProxy))
+    } else {
+      computedRefs[key] = computed(() => expr)
+    }
     Object.defineProperty(scopeProxy, key, {
       get: () => computedRefs[key]?.value,
       enumerable: true,
