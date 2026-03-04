@@ -1,6 +1,6 @@
 {
   "shard_id": "@root",
-  "state_anchor": "BigInt:0x4",
+  "state_anchor": "BigInt:0x5",
   "parent_bridge": null,
   "git_anchor": "HEAD",
   "cache_integrity": "VERIFIED",
@@ -142,6 +142,23 @@
         "hash_reference": "@root/hashes/src/runtime/scope.hash.md",
         "grammar_ref": "@root/hashes/grammar/vue.hash.md",
         "dependencies": [],
+        "fidelity_level": "Active"
+      },
+      "runtime.filters": {
+        "file_path": "@root/src/runtime/filters.ts",
+        "hash_reference": "@root/hashes/src/runtime/filters.hash.md",
+        "grammar_ref": "@root/hashes/grammar/typescript.hash.md",
+        "dependencies": [],
+        "fidelity_level": "Active"
+      },
+      "examples.catalog": {
+        "file_path": "@root/examples/README.md",
+        "hash_reference": null,
+        "grammar_ref": "@root/hashes/grammar/typescript.hash.md",
+        "dependencies": [
+          "@root/hashes/src/compiler/template.hash.md",
+          "@root/hashes/src/runtime/filters.hash.md"
+        ],
         "fidelity_level": "Active"
       },
       "runtime.app": {

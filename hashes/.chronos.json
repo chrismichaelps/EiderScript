@@ -35,6 +35,33 @@
         "risk": "Low"
       },
       "commit_ref": "HEAD"
+    },
+    {
+      "state_id": "BigInt:0x5-F4",
+      "timestamp": "2026-03-03T20:15:00Z",
+      "logic_delta": {
+        "intent": "F4: YAML normalizer (smart key joining, multi-line template key preservation), 7 real-world .eider.yaml examples, full-spectrum Tailwind regex",
+        "risk": "Low"
+      },
+      "commit_ref": "HEAD"
+    },
+    {
+      "state_id": "BigInt:0x5-F5",
+      "timestamp": "2026-03-03T21:10:00Z",
+      "logic_delta": {
+        "intent": "F5: Runtime completeness — filters.ts (13 built-ins), scope.ts expr-eval rewrite (|| ternary rewrite), template.compiler text:/v-else/v-else-if, runtime.test.ts (4671 tests passing)",
+        "risk": "Medium"
+      },
+      "commit_ref": "HEAD"
+    },
+    {
+      "state_id": "BigInt:0x5",
+      "timestamp": "2026-03-03T21:26:00Z",
+      "logic_delta": {
+        "intent": "F6: Registry sync (filters.hash.md, local.map.json, atlas.graph updated to 0x5), public API exports (createScope, applyFilters, splitPipeExpr, getFilters), example integration tests (7 specimens)",
+        "risk": "Low"
+      },
+      "commit_ref": "HEAD"
     }
   ]
 }
