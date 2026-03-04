@@ -4,10 +4,12 @@ import type { VNode } from 'vue'
 import type { Scope } from '../runtime/scope.js'
 import { Regex } from '../config/constants.js'
 import { compileVFor } from '../directives/v-for.js'
-import { compileVIf } from '../directives/v-if.js'
+import { compileVIf, compileVIfChain } from '../directives/v-if.js'
+import type { VIfBranch } from '../directives/v-if.js'
 import { compileVModel } from '../directives/v-model.js'
 import { compileVShow } from '../directives/v-show.js'
 import { compileVBind, compileVBindSpread } from '../directives/v-bind.js'
+import { applyFilters, splitPipeExpr } from '../runtime/filters.js'
 
 export interface TemplateCompilerConfig {
   dirIf: string
@@ -29,6 +31,8 @@ interface TagDescriptor {
     vModel?: string
     vShow?: string
     vBindSpread?: string
+    vElseIf?: string
+    vElse?: boolean
   }
 }
 
@@ -52,13 +56,16 @@ function parseTagKey(key: string, scope: Scope, config: TemplateCompilerConfig):
       const propName = part.slice(1, eqIdx)
       const expr = part.slice(eqIdx + 1)
       if (!propName) {
-        // v-bind spread: :=expr
         Object.assign(attrs, compileVBindSpread(expr, scope))
       } else {
         Object.assign(attrs, compileVBind(propName, expr, scope))
       }
     } else if (part.startsWith(`${config.dirIf}=`)) {
       directives.vIf = part.slice(config.dirIf.length + 1)
+    } else if (part.startsWith('v-else-if=')) {
+      directives.vElseIf = part.slice('v-else-if='.length)
+    } else if (part === 'v-else') {
+      directives.vElse = true
     } else if (part.startsWith(`${config.dirFor}=`)) {
       directives.vFor = part.slice(config.dirFor.length + 1)
     } else if (part.startsWith(`${config.dirModel}=`)) {
@@ -85,14 +92,22 @@ function parseTagKey(key: string, scope: Scope, config: TemplateCompilerConfig):
   return { tag, attrs, on, directives }
 }
 
-/** @EiderScript.Compiler.Template - Interpolates {{ expr }} in text */
-function interpolate(text: string, scope: Scope): string {
-  return text.replace(Regex.INTERPOLATION, (_, expr: string) => {
-    return String(scope.evaluate(expr.trim()) ?? '')
+/** @EiderScript.Compiler.Template - Interpolates {{ expr }} and {{ expr | filter }} in text */
+export function interpolate(text: string, scope: Scope): string {
+  return text.replace(Regex.INTERPOLATION, (_, rawExpr: string) => {
+    const { expr, pipes } = splitPipeExpr(rawExpr.trim())
+    const value = scope.evaluate(expr)
+    const result = pipes.length > 0 ? applyFilters(value, pipes) : value
+    return String(result ?? '')
   })
 }
 
-/** @EiderScript.Compiler.Template - Converts a YAML template node → VNode */
+/** @EiderScript.Compiler.Template - Converts a YAML template node → VNode
+ *
+ * Special reserved keys:
+ *   `text:` → emitted as interpolated text child, not an element
+ *   `attrs:` → merged into parent element attributes (inline YAML attrs block)
+ */
 export function compileNode(node: unknown, scope: Scope, config: TemplateCompilerConfig): VNode | string | null {
   if (typeof node === 'string') return interpolate(node, scope)
   if (typeof node !== 'object' || node === null) return String(node)
@@ -102,15 +117,83 @@ export function compileNode(node: unknown, scope: Scope, config: TemplateCompile
 
   const vnodes: Array<VNode | string> = []
 
-  for (const [key, value] of entries) {
-    const { tag, attrs, on, directives } = parseTagKey(key, scope, config)
+  // Pre-pass: group v-if / v-else-if / v-else chains
+  // We convert them to a grouped structure so compileVIfChain can handle them.
+  // All other entries pass through unchanged.
+  type GroupedEntry =
+    | { kind: 'ifChain'; branches: VIfBranch[] }
+    | { kind: 'single'; key: string; value: unknown }
 
-    // v-if: skip this node if condition is falsy
-    if (directives.vIf !== undefined) {
-      const result = compileVIf(directives.vIf, value, scope, config, compileNode)
+  const grouped: GroupedEntry[] = []
+  let i = 0
+  while (i < entries.length) {
+    const [key, value] = entries[i]!
+    const firstTag = key.trim().split(/\s+/)[0] ?? ''
+
+    // Skip `text:` and `attrs:` from chain grouping — handle later
+    if (firstTag === 'text' || firstTag === 'attrs') {
+      grouped.push({ kind: 'single', key, value })
+      i++
+      continue
+    }
+
+    // Detect v-if start
+    const hasVIf = key.includes(`${config.dirIf}=`)
+    if (hasVIf) {
+      const desc = parseTagKey(key, scope, config)
+      if (desc.directives.vIf !== undefined) {
+        const branches: VIfBranch[] = [
+          { directive: 'v-if', condition: desc.directives.vIf, node: value },
+        ]
+        // Consume following v-else-if / v-else entries
+        let j = i + 1
+        while (j < entries.length) {
+          const [nextKey, nextValue] = entries[j]!
+          const nDesc = parseTagKey(nextKey, scope, config)
+          if (nDesc.directives.vElseIf !== undefined) {
+            branches.push({ directive: 'v-else-if', condition: nDesc.directives.vElseIf, node: nextValue })
+            j++
+          } else if (nDesc.directives.vElse === true) {
+            branches.push({ directive: 'v-else', node: nextValue })
+            j++
+            break // v-else always terminates the chain
+          } else {
+            break
+          }
+        }
+        grouped.push({ kind: 'ifChain', branches })
+        i = j
+        continue
+      }
+    }
+
+    grouped.push({ kind: 'single', key, value })
+    i++
+  }
+
+  // Main pass: compile grouped entries to VNodes
+  for (const entry of grouped) {
+    // v-if / v-else-if / v-else chain
+    if (entry.kind === 'ifChain') {
+      const result = compileVIfChain(entry.branches, scope, config, compileNode)
       if (result !== null) vnodes.push(result)
       continue
     }
+
+    const { key, value } = entry
+
+    // `text:` special key — emit as interpolated text child
+    const baseTag = key.trim().split(/\s+/)[0] ?? ''
+    if (baseTag === 'text') {
+      const textContent = typeof value === 'string' ? interpolate(value, scope) : String(value ?? '')
+      if (textContent) vnodes.push(textContent)
+      continue
+    }
+
+    // `attrs:` special key — skip (handled by parent's parseTagKey)
+    if (baseTag === 'attrs') continue
+
+    const { tag, attrs, on, directives } = parseTagKey(key, scope, config)
 
     // v-for: expand into multiple vnodes
     if (directives.vFor !== undefined) {
@@ -124,32 +207,47 @@ export function compileNode(node: unknown, scope: Scope, config: TemplateCompile
       onObj[`on${ev.charAt(0).toUpperCase()}${ev.slice(1)}`] = fn
     }
 
-    // v-model: merge two-way binding props
+    // Handle inline `attrs:` sub-key for the current element
+    let inlineAttrs: Record<string, unknown> = {}
+    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      const valueObj = value as Record<string, unknown>
+      if ('attrs' in valueObj && typeof valueObj['attrs'] === 'object' && valueObj['attrs'] !== null) {
+        inlineAttrs = valueObj['attrs'] as Record<string, unknown>
+      }
+    }
+
+    // v-model props
     const vModelProps = directives.vModel !== undefined
       ? compileVModel(directives.vModel, scope)
       : {}
 
-    // v-show: merge display style props
+    // v-show props
     const vShowProps = directives.vShow !== undefined
       ? compileVShow(directives.vShow, scope)
       : {}
 
-    // v-bind spread: merge dynamic props object
+    // v-bind spread props
     const vBindSpreadProps = directives.vBindSpread !== undefined
       ? compileVBindSpread(directives.vBindSpread, scope)
       : {}
 
-    const props = { ...attrs, ...onObj, ...vModelProps, ...vShowProps, ...vBindSpreadProps }
+    const props = { ...attrs, ...inlineAttrs, ...onObj, ...vModelProps, ...vShowProps, ...vBindSpreadProps }
 
-    const children: VNode[] | string | undefined =
-      typeof value === 'string'
-        ? interpolate(value, scope)
-        : typeof value === 'object' && value !== null
-          ? (() => {
-            const nested = compileNode(value, scope, config)
-            return nested !== null ? [nested as VNode] : []
-          })()
-          : undefined
+    // Build children
+    const children: Array<VNode | string> | string | undefined = (() => {
+      if (typeof value === 'string') {
+        return interpolate(value, scope)
+      }
+      if (typeof value !== 'object' || value === null) {
+        return String(value ?? '')
+      }
+      // Nested object — compile children, filtering out `attrs:` sub-node
+      const childEntries = Object.entries(value as Record<string, unknown>).filter(
+        ([k]) => k.trim().split(/\s+/)[0] !== 'attrs'
+      )
+      const childNode = compileNode(Object.fromEntries(childEntries), scope, config)
+      return childNode !== null ? [childNode as VNode] : []
+    })()
 
     vnodes.push(h(tag, props, children))
   }
