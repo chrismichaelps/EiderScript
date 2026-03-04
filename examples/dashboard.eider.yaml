@@ -1,0 +1,150 @@
+name: Dashboard
+global: {}
+router:
+  routes:
+    - path: /dashboard
+      component: DashboardLayout
+
+components:
+  - name: StatCard
+    template:
+      div .bg-white .dark:bg-gray-900 .rounded-2xl .border .border-gray-200 .dark:border-gray-800
+        .p-5 .flex .flex-col .gap-3:
+        div .flex .items-center .justify-between:
+          p .text-sm .font-medium .text-gray-500 .dark:text-gray-400: "{{ label }}"
+          div .w-9 .h-9 .rounded-xl .flex .items-center .justify-center:
+            ":class": "'bg-' + color + '-100 dark:bg-' + color + '-900/30'"
+            span: "{{ icon }}"
+        p .text-3xl .font-bold .text-gray-900 .dark:text-white: "{{ value }}"
+        div .flex .items-center .gap-1.5:
+          span .text-xs .font-semibold .text-emerald-600: "{{ trend }}"
+          span .text-xs .text-gray-400: "vs last period"
+
+  - name: DashboardLayout
+    signals:
+      sidebarOpen: true
+      activeNav: "overview"
+      notifications: 3
+
+    computeds:
+      navItems:
+        - id: overview
+          label: Overview
+          icon: "📊"
+        - id: analytics
+          label: Analytics
+          icon: "📈"
+        - id: users
+          label: Users
+          icon: "👥"
+        - id: products
+          label: Products
+          icon: "📦"
+        - id: orders
+          label: Orders
+          icon: "🛍️"
+        - id: settings
+          label: Settings
+          icon: "⚙️"
+
+    methods:
+      setNav: "activeNav = id"
+      toggleSidebar: "sidebarOpen = !sidebarOpen"
+
+    template:
+      div .flex .h-screen .overflow-hidden .bg-gray-50 .dark:bg-gray-950:
+
+        # ─ Sidebar ─
+        aside .flex-shrink-0 .flex .flex-col .bg-white .dark:bg-gray-900
+          .border-r .border-gray-200 .dark:border-gray-800 .transition-all .duration-300:
+          v-show: sidebarOpen
+
+          # Sidebar header
+          div .flex .items-center .gap-3 .px-5 .py-4 .border-b .border-gray-100 .dark:border-gray-800:
+            div .w-8 .h-8 .rounded-xl .bg-indigo-600 .flex .items-center .justify-center:
+              span .text-white .text-sm .font-bold: "E"
+            span .font-bold .text-gray-900 .dark:text-white .text-sm: "EiderScript"
+
+          # Nav items
+          nav .flex-1 .overflow-y-auto .p-3 .space-y-1:
+            button .w-full .flex .items-center .gap-3 .px-3 .py-2.5 .rounded-xl
+              .text-sm .font-medium .transition-all .duration-150:
+              v-for: "item in navItems"
+              "@click": "setNav(item.id)"
+              span .text-base: "{{ item.icon }}"
+              span: "{{ item.label }}"
+
+          # Sidebar footer
+          div .p-4 .border-t .border-gray-100 .dark:border-gray-800:
+            div .flex .items-center .gap-3 .px-2:
+              div .w-8 .h-8 .rounded-full .bg-gradient-to-br .from-indigo-500 .to-purple-600
+                .flex .items-center .justify-center:
+                span .text-white .text-xs .font-bold: "C"
+              div:
+                p .text-xs .font-semibold .text-gray-900 .dark:text-white: "Chris P."
+                p .text-xs .text-gray-400: "Admin"
+
+        # ─ Main content ─
+        div .flex-1 .flex .flex-col .overflow-hidden:
+
+          # Topbar
+          header .sticky .top-0 .z-40 .flex .items-center .justify-between .px-6 .py-4
+            .bg-white .dark:bg-gray-900 .border-b .border-gray-200 .dark:border-gray-800:
+            div .flex .items-center .gap-3:
+              button .p-2 .rounded-lg .text-gray-500 .hover:bg-gray-100 .dark:hover:bg-gray-800:
+                "@click": toggleSidebar
+                text: "☰"
+              h2 .text-lg .font-semibold .text-gray-900 .dark:text-white: "{{ activeNav | capitalize }}"
+            div .flex .items-center .gap-3:
+              button .relative .p-2 .rounded-lg .text-gray-500 .hover:bg-gray-100 .dark:hover:bg-gray-800:
+                span .absolute .-top-0.5 .-right-0.5 .w-4 .h-4 .rounded-full
+                  .bg-red-500 .text-white .text-[10px] .font-bold .flex .items-center .justify-center:
+                  v-if: notifications > 0
+                  text: "{{ notifications }}"
+                text: "🔔"
+
+          # Scrollable body
+          main .flex-1 .overflow-y-auto .p-6 .space-y-6:
+
+            # Stats row
+            div .grid .grid-cols-1 .sm:grid-cols-2 .xl:grid-cols-4 .gap-4:
+              div .bg-white .dark:bg-gray-900 .rounded-2xl .border .border-gray-200 .dark:border-gray-800 .p-5:
+                p .text-sm .font-medium .text-gray-500 .dark:text-gray-400 .mb-1: "Total revenue"
+                p .text-3xl .font-bold .text-gray-900 .dark:text-white: "$48,291"
+                p .text-xs .text-emerald-600 .font-semibold .mt-1: "↑ 12.5% vs last month"
+              div .bg-white .dark:bg-gray-900 .rounded-2xl .border .border-gray-200 .dark:border-gray-800 .p-5:
+                p .text-sm .font-medium .text-gray-500 .dark:text-gray-400 .mb-1: "New users"
+                p .text-3xl .font-bold .text-gray-900 .dark:text-white: "1,429"
+                p .text-xs .text-emerald-600 .font-semibold .mt-1: "↑ 8.1% vs last month"
+              div .bg-white .dark:bg-gray-900 .rounded-2xl .border .border-gray-200 .dark:border-gray-800 .p-5:
+                p .text-sm .font-medium .text-gray-500 .dark:text-gray-400 .mb-1: "Orders"
+                p .text-3xl .font-bold .text-gray-900 .dark:text-white: "3,842"
+                p .text-xs .text-red-500 .font-semibold .mt-1: "↓ 2.3% vs last month"
+              div .bg-white .dark:bg-gray-900 .rounded-2xl .border .border-gray-200 .dark:border-gray-800 .p-5:
+                p .text-sm .font-medium .text-gray-500 .dark:text-gray-400 .mb-1: "Conversion"
+                p .text-3xl .font-bold .text-gray-900 .dark:text-white: "3.61%"
+                p .text-xs .text-emerald-600 .font-semibold .mt-1: "↑ 0.4pp vs last month"
+
+            # Data table
+            div .bg-white .dark:bg-gray-900 .rounded-2xl .border .border-gray-200 .dark:border-gray-800:
+              div .flex .items-center .justify-between .px-6 .py-4 .border-b .border-gray-100 .dark:border-gray-800:
+                h3 .font-semibold .text-gray-900 .dark:text-white: "Recent orders"
+                button .text-sm .text-indigo-600 .dark:text-indigo-400 .font-medium .hover:underline:
+                  text: "View all →"
+              div .overflow-x-auto:
+                table .w-full:
+                  thead .bg-gray-50 .dark:bg-gray-800/50:
+                    tr:
+                      th .px-6 .py-3 .text-left .text-xs .font-semibold .text-gray-500 .dark:text-gray-400 .uppercase .tracking-wide: "Order"
+                      th .px-6 .py-3 .text-left .text-xs .font-semibold .text-gray-500 .dark:text-gray-400 .uppercase .tracking-wide: "Customer"
+                      th .px-6 .py-3 .text-left .text-xs .font-semibold .text-gray-500 .dark:text-gray-400 .uppercase .tracking-wide: "Status"
+                      th .px-6 .py-3 .text-right .text-xs .font-semibold .text-gray-500 .dark:text-gray-400 .uppercase .tracking-wide: "Amount"
+                  tbody .divide-y .divide-gray-100 .dark:divide-gray-800:
+                    tr .hover:bg-gray-50 .dark:hover:bg-gray-800/50 .transition-colors:
+                      v-for: "order in recentOrders"
+                      td .px-6 .py-4 .text-sm .font-medium .text-gray-900 .dark:text-white: "#{{ order.id }}"
+                      td .px-6 .py-4 .text-sm .text-gray-600 .dark:text-gray-300: "{{ order.customer }}"
+                      td .px-6 .py-4:
+                        span .px-2.5 .py-1 .text-xs .font-semibold .rounded-full: "{{ order.status }}"
+                      td .px-6 .py-4 .text-sm .font-semibold .text-gray-900 .dark:text-white .text-right:
+                        "${{ order.amount }}"

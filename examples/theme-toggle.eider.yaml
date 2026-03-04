@@ -1,0 +1,125 @@
+name: ThemeToggle
+global: {}
+router:
+  routes:
+    - path: /
+      component: ThemeShowcase
+
+components:
+  - name: ThemeToggle
+    signals:
+      dark: false
+    methods:
+      toggle: "dark = !dark"
+    template:
+      button .relative .inline-flex .items-center .w-14 .h-7
+        .rounded-full .transition-colors .duration-300 .cursor-pointer
+        .focus:outline-none .focus:ring-2 .focus:ring-offset-2 .focus:ring-indigo-500:
+        v-show: true
+        "@click": toggle
+        span .sr-only: "Toggle dark mode"
+        span .pointer-events-none .block .w-5 .h-5 .rounded-full .bg-white .shadow-lg
+          .ring-0 .transition-transform .duration-300: ""
+
+  - name: ThemeShowcase
+    signals:
+      dark: false
+      fontSize: "base"
+      accent: "indigo"
+
+    computeds:
+      accentBg: "'bg-' + accent + '-600'"
+      accentText: "'text-' + accent + '-600'"
+
+    methods:
+      toggleDark: "dark = !dark"
+      setFontSize: "fontSize = value"
+      setAccent: "accent = value"
+
+    template:
+      # Outer wrapper switches class on dark toggle
+      div .min-h-screen .transition-colors .duration-500
+        .bg-white .dark:bg-gray-950 .text-gray-900 .dark:text-white:
+
+        # Top bar
+        header .sticky .top-0 .z-50 .backdrop-blur-md
+          .bg-white/80 .dark:bg-gray-900/80 .border-b .border-gray-200 .dark:border-gray-800
+          .px-6 .py-4 .flex .items-center .justify-between:
+          h1 .text-lg .font-bold .tracking-tight: "EiderScript Theme Demo"
+          div .flex .items-center .gap-4:
+            # Accent palette
+            div .flex .gap-2:
+              button .w-5 .h-5 .rounded-full .bg-indigo-500 .ring-2 .ring-offset-2 .ring-indigo-500:
+                "@click": "setAccent('indigo')"
+              button .w-5 .h-5 .rounded-full .bg-rose-500 .ring-2 .ring-offset-2 .ring-rose-500:
+                "@click": "setAccent('rose')"
+              button .w-5 .h-5 .rounded-full .bg-emerald-500 .ring-2 .ring-offset-2 .ring-emerald-500:
+                "@click": "setAccent('emerald')"
+              button .w-5 .h-5 .rounded-full .bg-amber-500 .ring-2 .ring-offset-2 .ring-amber-500:
+                "@click": "setAccent('amber')"
+            # Dark toggle
+            button .relative .w-12 .h-6 .rounded-full .bg-gray-200 .dark:bg-indigo-600
+              .transition-colors .duration-300 .cursor-pointer:
+              "@click": toggleDark
+
+        main .max-w-5xl .mx-auto .px-6 .py-12 .space-y-10:
+
+          # Hero section (dark-mode aware)
+          section .text-center .space-y-4:
+            h2 .text-5xl .font-extrabold .tracking-tight
+              .text-gray-900 .dark:text-white: "Adaptive UI"
+            p .text-lg .text-gray-600 .dark:text-gray-300 .max-w-xl .mx-auto .leading-relaxed:
+              "Full Tailwind dark-mode, responsive breakpoints, and arbitrary values — all in YAML."
+            div .flex .gap-3 .justify-center .mt-6:
+              button .px-6 .py-3 .rounded-xl .text-white .font-semibold
+                .bg-indigo-600 .hover:bg-indigo-700 .dark:hover:bg-indigo-500
+                .shadow-md .shadow-indigo-500/25 .transition-all .duration-200:
+                text: "Get started →"
+              button .px-6 .py-3 .rounded-xl .font-semibold
+                .bg-gray-100 .hover:bg-gray-200 .dark:bg-gray-800 .dark:hover:bg-gray-700
+                .text-gray-700 .dark:text-gray-200 .transition-all .duration-200:
+                text: "Learn more"
+
+          # Feature grid
+          section .grid .grid-cols-1 .sm:grid-cols-2 .lg:grid-cols-3 .gap-6:
+            div .bg-gray-50 .dark:bg-gray-900 .border .border-gray-200 .dark:border-gray-800
+              .rounded-2xl .p-6 .group .hover:border-indigo-300 .dark:hover:border-indigo-700
+              .transition-all .duration-200:
+              div .w-10 .h-10 .rounded-xl .bg-indigo-100 .dark:bg-indigo-900/40 .flex .items-center .justify-center .mb-4:
+                span .text-indigo-600 .dark:text-indigo-400 .text-xl: "⚡"
+              h3 .font-semibold .text-gray-900 .dark:text-white .mb-2: "Fast by default"
+              p .text-sm .text-gray-600 .dark:text-gray-400 .leading-relaxed:
+                "Compiled YAML templates run at native Vue 3 VNode speed."
+
+            div .bg-gray-50 .dark:bg-gray-900 .border .border-gray-200 .dark:border-gray-800
+              .rounded-2xl .p-6 .group .hover:border-indigo-300 .dark:hover:border-indigo-700
+              .transition-all .duration-200:
+              div .w-10 .h-10 .rounded-xl .bg-emerald-100 .dark:bg-emerald-900/40 .flex .items-center .justify-center .mb-4:
+                span .text-emerald-600 .dark:text-emerald-400 .text-xl: "🎨"
+              h3 .font-semibold .text-gray-900 .dark:text-white .mb-2: "Tailwind native"
+              p .text-sm .text-gray-600 .dark:text-gray-400 .leading-relaxed:
+                "All classes — stacked variants, group-hover, arbitrary values — just work."
+
+            div .bg-gray-50 .dark:bg-gray-900 .border .border-gray-200 .dark:border-gray-800
+              .rounded-2xl .p-6 .group .hover:border-indigo-300 .dark:hover:border-indigo-700
+              .transition-all .duration-200:
+              div .w-10 .h-10 .rounded-xl .bg-rose-100 .dark:bg-rose-900/40 .flex .items-center .justify-center .mb-4:
+                span .text-rose-600 .dark:text-rose-400 .text-xl: "🛡️"
+              h3 .font-semibold .text-gray-900 .dark:text-white .mb-2: "Effect-safe"
+              p .text-sm .text-gray-600 .dark:text-gray-400 .leading-relaxed:
+                "Runtime config via Effect.Config. No magic strings."
+
+          # Color scale showcase
+          section:
+            h3 .text-lg .font-semibold .mb-4 .text-gray-700 .dark:text-gray-300: "Color scale"
+            div .grid .grid-cols-5 .sm:grid-cols-10 .gap-2:
+              div .h-12 .rounded-lg .bg-indigo-50: ""
+              div .h-12 .rounded-lg .bg-indigo-100: ""
+              div .h-12 .rounded-lg .bg-indigo-200: ""
+              div .h-12 .rounded-lg .bg-indigo-300: ""
+              div .h-12 .rounded-lg .bg-indigo-400: ""
+              div .h-12 .rounded-lg .bg-indigo-500: ""
+              div .h-12 .rounded-lg .bg-indigo-600: ""
+              div .h-12 .rounded-lg .bg-indigo-700: ""
+              div .h-12 .rounded-lg .bg-indigo-800: ""
+              div .h-12 .rounded-lg .bg-indigo-900: ""
