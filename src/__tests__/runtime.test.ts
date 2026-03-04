@@ -39,8 +39,8 @@ describe('createScope — signal initialization', () => {
   })
 
   it('initializes string signal', () => {
-    const scope = makeScope({ name: 'Alice' })
-    expect(scope.signals['name']?.value).toBe('Alice')
+    const scope = makeScope({ name: 'Chris' })
+    expect(scope.signals['name']?.value).toBe('Chris')
   })
 
   it('initializes boolean signal', () => {
@@ -59,8 +59,8 @@ describe('createScope — signal initialization', () => {
   })
 
   it('initializes object signal', () => {
-    const scope = makeScope({ user: { id: 1, name: 'Bob' } })
-    expect(scope.signals['user']?.value).toEqual({ id: 1, name: 'Bob' })
+    const scope = makeScope({ user: { id: 1, name: 'Michael' } })
+    expect(scope.signals['user']?.value).toEqual({ id: 1, name: 'Michael' })
   })
 
   // 40 parametric signal initialization cases
@@ -86,8 +86,8 @@ describe('createScope — evaluate', () => {
   })
 
   it('evaluates string', () => {
-    const scope = makeScope({ name: 'Alice' })
-    expect(scope.evaluate('name')).toBe('Alice')
+    const scope = makeScope({ name: 'Chris' })
+    expect(scope.evaluate('name')).toBe('Chris')
   })
 
   it('returns undefined for invalid expression (no throw)', () => {
@@ -369,8 +369,8 @@ describe('filter registry completeness', () => {
 
 describe('interpolate — basic expression', () => {
   it('replaces {{ expr }}', () => {
-    const scope = makeScope({ name: 'Alice' })
-    expect(interpolate('Hello {{ name }}!', scope)).toBe('Hello Alice!')
+    const scope = makeScope({ name: 'Chris' })
+    expect(interpolate('Hello {{ name }}!', scope)).toBe('Hello Chris!')
   })
 
   it('multiple interpolations', () => {
@@ -392,8 +392,8 @@ describe('interpolate — basic expression', () => {
 
 describe('interpolate — pipe filters in {{ expr | filter }}', () => {
   it('{{ name | capitalize }} works', () => {
-    const scope = makeScope({ name: 'alice' })
-    expect(interpolate('{{ name | capitalize }}', scope)).toBe('Alice')
+    const scope = makeScope({ name: 'chris' })
+    expect(interpolate('{{ name | capitalize }}', scope)).toBe('Chris')
   })
 
   it('{{ count | number:2 }} works', () => {
@@ -457,9 +457,9 @@ describe('compileNode — text: special key', () => {
   })
 
   it('text: with pipe filter resolves', () => {
-    const scope = makeScope({ name: 'alice' })
+    const scope = makeScope({ name: 'chris' })
     const result = compileNode({ 'text': '{{ name | capitalize }}' }, scope, DEFAULT_CONFIG)
-    expect(result).toBe('Alice')
+    expect(result).toBe('Chris')
   })
 
   it('multiple text: siblings', () => {

@@ -1,6 +1,7 @@
 /** @EiderScript.Runtime.Scope - Reactive eval scope for expr-eval expressions */
 import { computed, ref } from 'vue'
 import type { Ref, ComputedRef } from 'vue'
+import { Parser } from 'expr-eval'
 
 export interface Scope {
   readonly signals: Record<string, Ref<unknown>>
@@ -10,35 +11,53 @@ export interface Scope {
   evaluate: (expr: string) => unknown
 }
 
-/** @EiderScript.Runtime.Scope - Safe JS expression evaluator using sandboxed Function.
- *  Supports the full JS expression syntax: ||, &&, ternary, template literals,
- *  method calls, etc.  The scope proxy is injected as named parameters so the
- *  function body has no access to the outer global scope.
+const exprParser = new Parser()
+
+/** @EiderScript.Runtime.Scope — Normalizes a mixed JS / expr-eval expression.
  *
- *  Also normalizes expr-eval DSL keywords to JS operators for backward compat:
- *    and → &&   or → ||   not → !   eq → ===   ne → !==   lt → <   gt → >   le → <=   ge → >=
+ *  Accepts BOTH JS operator syntax and expr-eval DSL keywords:
+ *    `a || b`  →  `a ? a : b`   (value-preserving short-circuit, not just boolean)
+ *    `a && b`  →  `a and b`     (expr-eval `and` — returns boolean, fine for conditionals)
+ *    expr-eval keywords `and`, `or`, `not` pass through unchanged.
+ *
+ *  Using expr-eval (not new Function) keeps evaluation safe inside Vitest's Node
+ *  vm context (avoids ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING).
  */
-function normalizeExpr(expr: string): string {
+function normalizeExpr(raw: string): string {
+  let expr = raw
+
+  // JS `&&` → expr-eval `and`
+  expr = expr.replace(/&&/g, ' and ')
+
+  // JS `||` → value-preserving ternary in expr-eval.
+  // We split on `||` (not `|||`) using a character-level scan (same approach as
+  // splitPipeExpr) to avoid regex capture-group consumption issues.
+  const orParts: string[] = []
+  let cur = ''
+  for (let i = 0; i < expr.length; i++) {
+    const ch = expr[i]!
+    if (ch === '|' && expr[i + 1] === '|' && expr[i - 1] !== '|' && expr[i + 2] !== '|') {
+      orParts.push(cur.trim())
+      cur = ''
+      i++ // skip second `|`
+    } else {
+      cur += ch
+    }
+  }
+  orParts.push(cur.trim())
+
+  if (orParts.length > 1) {
+    // Fold right-to-left: a || b || c → (a) ? (a) : ((b) ? (b) : (c))
+    expr = orParts.reduceRight((acc, part) => `(${part}) ? (${part}) : (${acc})`)
+  }
+
   return expr
-    // word-boundary replacements to avoid partial matches inside identifiers
-    .replace(/\band\b/g, '&&')
-    .replace(/\bor\b/g, '||')
-    .replace(/\bnot\b/g, '!')
-    .replace(/\beq\b/g, '===')
-    .replace(/\bne\b/g, '!==')
-    .replace(/\blt\b/g, '<')
-    .replace(/\bgt\b/g, '>')
-    .replace(/\ble\b/g, '<=')
-    .replace(/\bge\b/g, '>=')
 }
 
 function jsEval(expr: string, scopeProxy: Record<string, unknown>): unknown {
   try {
-    const keys = Object.keys(scopeProxy)
-    const vals = Object.values(scopeProxy)
-    // eslint-disable-next-line @typescript-eslint/no-implied-eval
-    const fn = new Function(...keys, `"use strict"; return (${normalizeExpr(expr)})`)
-    return fn(...vals)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return exprParser.parse(normalizeExpr(expr)).evaluate(scopeProxy as any)
   } catch {
     return undefined
   }
