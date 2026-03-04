@@ -3,9 +3,17 @@
  * Import from 'eiderscript' to access the full runtime API.
  */
 
-// Runtime
+// Runtime — app
 export { createEiderApp } from './runtime/app.runtime.js'
 export type { EiderAppInput, EiderApp } from './runtime/app.runtime.js'
+
+// Runtime — reactive scope
+export { createScope } from './runtime/scope.js'
+export type { Scope } from './runtime/scope.js'
+
+// Runtime — template filters
+export { applyFilters, splitPipeExpr, getFilters } from './runtime/filters.js'
+export type { FilterFn } from './runtime/filters.js'
 
 // SSR
 export { renderEider } from './ssr/render.js'

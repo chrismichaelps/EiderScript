@@ -14,7 +14,7 @@
  * or spaces matching /\s*\|\s*([a-z][a-z0-9_]*)/ after the expression.
  */
 
-type FilterFn = (value: unknown, ...args: string[]) => unknown
+export type FilterFn = (value: unknown, ...args: string[]) => unknown
 
 /** @EiderScript.Runtime.Filters — All 13 built-in filters */
 const FILTERS: Record<string, FilterFn> = {
