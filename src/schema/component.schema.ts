@@ -20,6 +20,12 @@ export const WatchEntrySchema = z.object({
 export const ComponentSchema = (errComponentNameEmpty: string) => z.object({
   name: z.string().min(1, errComponentNameEmpty),
   props: z.record(z.string(), PropSchema).optional(),
+  emits: z.array(z.string()).optional(),
+  provide: z.record(z.string(), z.any()).optional(),
+  inject: z.union([
+    z.array(z.string()),
+    z.record(z.string(), z.string())
+  ]).optional(),
   signals: z.record(z.string(), z.any()).optional(),
   computeds: z.record(z.string(), z.union([z.string(), z.array(z.any()), z.record(z.string(), z.any())])).optional(),
   methods: z.record(z.string(), z.string()).optional(),
