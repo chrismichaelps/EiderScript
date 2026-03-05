@@ -1,4 +1,8 @@
 <p align="center">
+  <img src="public/eider-logo.png" alt="EiderScript Logo" height="228" />
+</p>
+
+<p align="center">
   <strong>EiderScript</strong>
 </p>
 
