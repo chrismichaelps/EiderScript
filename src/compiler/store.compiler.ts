@@ -11,10 +11,11 @@ import { EiderConstValues } from '../config/constants.js'
 
 const exprParser = new Parser()
 
+type ExprBindings = Parameters<ReturnType<typeof exprParser.parse>['evaluate']>[0]
+
 function evalExpr(expr: string, scope: Record<string, unknown>): unknown {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return exprParser.parse(expr).evaluate(scope as any)
+    return exprParser.parse(expr).evaluate(scope as ExprBindings)
   } catch {
     return undefined
   }

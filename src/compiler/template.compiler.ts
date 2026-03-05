@@ -1,6 +1,14 @@
 /** @EiderScript.Compiler.Template - YAML template tree → Vue h() VNode tree */
-import { h } from 'vue'
-import type { VNode } from 'vue'
+import {
+  h,
+  Teleport,
+  Suspense,
+  KeepAlive,
+  Transition,
+  TransitionGroup,
+  type VNode,
+  type Component
+} from 'vue'
 import type { Scope } from '../runtime/scope.js'
 import { Regex, Tags } from '../config/constants.js'
 import { compileVFor } from '../directives/v-for.js'
@@ -413,7 +421,20 @@ export function compileNode(
       continue
     }
 
-    let vnode = h(tag, props, children)
+    const builtInTagMap: Record<string, Component> = {
+      teleport: Teleport as unknown as Component,
+      suspense: Suspense as unknown as Component,
+      keepalive: KeepAlive as unknown as Component,
+      'keep-alive': KeepAlive as unknown as Component,
+      transition: Transition as unknown as Component,
+      transitiongroup: TransitionGroup as unknown as Component,
+      'transition-group': TransitionGroup as unknown as Component,
+    }
+
+    const resolvedTag =
+      builtInTagMap[tag.toLowerCase()] ?? tag
+
+    let vnode = h(resolvedTag as string | Component, props, children)
 
     // v-once: mark as static, never re-renders
     if (directives.vOnce === true) {

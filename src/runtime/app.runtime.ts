@@ -1,5 +1,5 @@
 /** @EiderScript.Runtime.App - createEiderApp factory: compiles ASTs → Vue app instance */
-import { createApp, createSSRApp } from 'vue'
+import { createApp, createSSRApp, type Plugin } from 'vue'
 import { createPinia } from 'pinia'
 import { Effect } from 'effect'
 import { parseYaml } from '../parser/yaml.parser.js'
@@ -23,6 +23,8 @@ export interface EiderAppInput {
   components?: Record<string, string>
   /** Map of store id → .eider.yaml content (kind: store) */
   stores?: Record<string, string>
+  /** Custom Vue plugins to register (mapped by their name in app global plugins list) */
+  plugins?: Record<string, Plugin>
   /** Enable SSR mode (uses createSSRApp) */
   ssr?: boolean
 }
@@ -130,6 +132,20 @@ export const createEiderApp = (
 
     const router = compileRouter(appAst, resolveComponent, input.ssr ?? false)
     if (router) vueApp.use(router)
+
+    // Load external global plugins
+    if (appAst.global?.plugins) {
+      for (const pluginName of appAst.global.plugins) {
+        if (pluginName === 'pinia' || pluginName === 'vue-router') continue
+
+        const externalPlugin = input.plugins?.[pluginName]
+        if (externalPlugin) {
+          vueApp.use(externalPlugin)
+        } else {
+          console.warn(`[EiderScript] Plugin "${pluginName}" was requested in YAML but not provided in EiderAppInput.plugins map.`)
+        }
+      }
+    }
 
     // Register compiled components globally
     for (const [name, component] of Object.entries(compiledComponents)) {

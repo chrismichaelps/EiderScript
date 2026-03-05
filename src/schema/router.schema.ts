@@ -24,7 +24,7 @@ export const AppSchema = z.object({
   router: z
     .object({ routes: z.array(RouteSchema) })
     .optional(),
-  template: z.any().optional(),
+  template: z.unknown().optional(),
   /** Inline component definitions — compiled in-order before router is built */
   components: z.array(ComponentSchema('Component name must not be empty')).optional(),
 })

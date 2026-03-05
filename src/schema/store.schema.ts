@@ -14,7 +14,7 @@ const StoreWatchEntrySchema = z.object({
 
 export const StoreSchema = z.object({
   id: z.string(),
-  state: z.record(z.string(), z.any()).optional(),
+  state: z.record(z.string(), z.unknown()).optional(),
   getters: z.record(z.string(), z.string()).optional(),
   actions: z.record(z.string(), z.union([z.string(), StoreActionSchema])).optional(),
   watch: z.record(z.string(), StoreWatchEntrySchema).optional(),
