@@ -35,14 +35,24 @@ export const compileStore = (
             state[key] = ref(initial)
           }
 
-          const scopeProxy: Record<string, unknown> = {}
-          for (const [key, r] of Object.entries(state)) {
-            Object.defineProperty(scopeProxy, key, {
-              get: () => r.value,
-              set: (v: unknown) => { r.value = v },
-              enumerable: true,
-            })
-          }
+          const scopeProxy = new Proxy({} as Record<string, unknown>, {
+            get(_, key) {
+              if (typeof key === 'string' && key in state) return state[key]!.value
+              if (typeof key === 'string' && getters && key in getters) return getters[key]!.value
+              return undefined
+            },
+            set(_, key, value) {
+              if (typeof key === 'string' && key in state) {
+                state[key]!.value = value
+                return true
+              }
+              return false
+            },
+            has(_, key) {
+              if (typeof key !== 'string') return false
+              return key in state || (getters && key in getters)
+            }
+          })
 
           const getters: Record<string, ComputedRef<unknown>> = {}
           for (const [key, expr] of Object.entries(ast.getters ?? {})) {
@@ -63,10 +73,10 @@ export const compileStore = (
                 const effect = Effect.tryPromise({
                   try: async () => {
                     const fn = new Function(
-                      ...Object.keys(scopeProxy),
-                      `return (async () => { ${body} })()`,
+                      'scope',
+                      `with(scope) { return (async () => { ${body} })() }`,
                     )
-                    return fn(...Object.values(scopeProxy))
+                    return fn(scopeProxy)
                   },
                   catch: (e) =>
                     new CompileError({ message: `${eiderConstants.errStoreActionFailed} ${String(e)}` }),
