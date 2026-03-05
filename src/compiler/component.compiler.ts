@@ -355,7 +355,7 @@ export const compileComponent = (
           if (ast.template == null) return null
 
           // Vue binds `this` to the component proxy, but provides `ctx` as first arg.
-          const renderCtx = this ?? ctx
+          const renderCtx = this ?? ctx ?? {}
           return compileNode(
             ast.template,
             createRenderScope(renderCtx, constants.interpolationPrefix),
