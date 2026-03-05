@@ -1,49 +1,259 @@
 {
   "graph_version": "1.0",
-  "state_anchor": "BigInt:0x8",
+  "state_anchor": "BigInt:0xA",
   "description": "Directional dependency edges. When an upstream node changes, all downstream nodes are flagged DIRTY.",
   "grammar_refs": {
     "typescript": "@root/hashes/grammar/typescript.hash.md",
-    "effect":     "@root/hashes/grammar/effect.hash.md",
-    "vue":        "@root/hashes/grammar/vue.hash.md",
-    "pinia":      "@root/hashes/grammar/pinia.hash.md"
+    "effect": "@root/hashes/grammar/effect.hash.md",
+    "vue": "@root/hashes/grammar/vue.hash.md",
+    "pinia": "@root/hashes/grammar/pinia.hash.md"
   },
   "edges": [
-    { "from": "src/compiler/component.compiler", "to": "hashes/grammar/typescript",   "type": "LAYER_DEPENDENCY", "impact": "HIGH",   "reason": "Uses TS strict typing throughout" },
-    { "from": "src/compiler/component.compiler", "to": "hashes/grammar/vue",          "type": "SCHEMA_CONTRACT",  "impact": "HIGH",   "reason": "Emits ref, computed, watch, onMounted, h() calls" },
-    { "from": "src/compiler/template.compiler",  "to": "hashes/grammar/vue",          "type": "SCHEMA_CONTRACT",  "impact": "HIGH",   "reason": "Emits h() VNode tree and directive bindings" },
-    { "from": "src/compiler/template.compiler",  "to": "src/directives/v-once",       "type": "LAYER_DEPENDENCY", "impact": "MEDIUM", "reason": "Compiles v-once directive" },
-    { "from": "src/compiler/template.compiler",  "to": "src/directives/v-pre",        "type": "LAYER_DEPENDENCY", "impact": "MEDIUM", "reason": "Compiles v-pre directive" },
-    { "from": "src/compiler/template.compiler",  "to": "src/directives/v-memo",       "type": "LAYER_DEPENDENCY", "impact": "MEDIUM", "reason": "Compiles v-memo directive" },
-    { "from": "src/compiler/template.compiler",  "to": "src/directives/v-cloak",      "type": "LAYER_DEPENDENCY", "impact": "MEDIUM", "reason": "Compiles v-cloak directive" },
-    { "from": "src/compiler/store.compiler",     "to": "hashes/grammar/pinia",        "type": "SCHEMA_CONTRACT",  "impact": "HIGH",   "reason": "Emits defineStore Setup Store pattern" },
-    { "from": "src/compiler/store.compiler",     "to": "hashes/grammar/effect",       "type": "LAYER_DEPENDENCY", "impact": "MEDIUM", "reason": "Async actions wrapped in Effect.gen + Layer" },
-    { "from": "src/compiler/component.compiler", "to": "hashes/grammar/effect",       "type": "LAYER_DEPENDENCY", "impact": "MEDIUM", "reason": "Async actions wrapped in Effect.gen + Layer" },
-    { "from": "src/runtime/app.runtime",         "to": "hashes/grammar/vue",          "type": "SCHEMA_CONTRACT",  "impact": "HIGH",   "reason": "createApp, createPinia, createRouter calls" },
-    { "from": "src/runtime/app.runtime",         "to": "hashes/grammar/effect",       "type": "LAYER_DEPENDENCY", "impact": "MEDIUM", "reason": "Pipeline wrapped in Effect chain" },
-    { "from": "src/runtime/scope",               "to": "hashes/grammar/vue",          "type": "SCHEMA_CONTRACT",  "impact": "MEDIUM", "reason": "Uses ref, computed for reactive scope" },
-    { "from": "src/ssr/render",                  "to": "hashes/grammar/vue",          "type": "SCHEMA_CONTRACT",  "impact": "HIGH",   "reason": "createSSRApp + renderToString" },
-    { "from": "src/ssr/render",                  "to": "hashes/grammar/effect",       "type": "LAYER_DEPENDENCY", "impact": "MEDIUM", "reason": "Effect.tryPromise wraps renderToString" },
-    { "from": "src/ssr/hydrate",                 "to": "hashes/grammar/vue",          "type": "SCHEMA_CONTRACT",  "impact": "HIGH",   "reason": "createSSRApp client hydration mount" },
-    { "from": "src/effects/services",            "to": "hashes/grammar/effect",       "type": "SCHEMA_CONTRACT",  "impact": "HIGH",   "reason": "Context.Tag service definitions" },
-    { "from": "src/effects/layers",              "to": "hashes/grammar/effect",       "type": "SCHEMA_CONTRACT",  "impact": "HIGH",   "reason": "Layer.succeed + Layer.mergeAll" },
-    { "from": "src/parser/yaml.parser",          "to": "hashes/grammar/effect",       "type": "SCHEMA_CONTRACT",  "impact": "MEDIUM", "reason": "Effect.try wraps js-yaml.load" },
-    { "from": "src/runtime/filters",              "to": "hashes/grammar/typescript",   "type": "LAYER_DEPENDENCY", "impact": "MEDIUM", "reason": "13 built-in filter fns; splitPipeExpr char-level scanner" },
-    { "from": "src/compiler/template.compiler",   "to": "src/runtime/filters",         "type": "SCHEMA_CONTRACT",  "impact": "HIGH",   "reason": "interpolate() calls splitPipeExpr + applyFilters for pipe resolution" },
-    { "from": "src/ssr/render",                   "to": "src/runtime/app.runtime",     "type": "LAYER_DEPENDENCY", "impact": "HIGH",   "reason": "renderEider delegates all compilation to createEiderApp" },
-    { "from": "src/ssr/hydrate",                  "to": "src/runtime/app.runtime",     "type": "LAYER_DEPENDENCY", "impact": "HIGH",   "reason": "hydrateEider delegates mount to createEiderApp" },
-    { "from": "src/directives/v-once",            "to": "hashes/grammar/vue",          "type": "SCHEMA_CONTRACT",  "impact": "MEDIUM", "reason": "Static VNode rendering" },
-    { "from": "src/directives/v-pre",             "to": "hashes/grammar/vue",          "type": "SCHEMA_CONTRACT",  "impact": "MEDIUM", "reason": "createStaticVNode for raw content" },
-    { "from": "src/directives/v-memo",            "to": "hashes/grammar/vue",          "type": "SCHEMA_CONTRACT",  "impact": "MEDIUM", "reason": "Conditional re-render based on deps" },
-    { "from": "src/directives/v-cloak",           "to": "hashes/grammar/vue",          "type": "SCHEMA_CONTRACT",  "impact": "MEDIUM", "reason": "Compile-time directive marker" },
-    { "from": "src/compiler/template.compiler",   "to": "src/directives/v-text",       "type": "LAYER_DEPENDENCY", "impact": "MEDIUM", "reason": "Compiles v-text directive" },
-    { "from": "src/compiler/template.compiler",   "to": "src/directives/v-html",       "type": "LAYER_DEPENDENCY", "impact": "MEDIUM", "reason": "Compiles v-html directive" },
-    { "from": "src/compiler/template.compiler",   "to": "src/directives/v-on",         "type": "LAYER_DEPENDENCY", "impact": "MEDIUM", "reason": "Compiles v-on directive" },
-    { "from": "src/compiler/template.compiler",   "to": "src/directives/v-slot",       "type": "LAYER_DEPENDENCY", "impact": "MEDIUM", "reason": "Compiles v-slot directive" },
-    { "from": "src/directives/v-text",            "to": "hashes/grammar/vue",          "type": "SCHEMA_CONTRACT",  "impact": "MEDIUM", "reason": "Native text injections constraint" },
-    { "from": "src/directives/v-html",            "to": "hashes/grammar/vue",          "type": "SCHEMA_CONTRACT",  "impact": "MEDIUM", "reason": "Native html injections constraint" },
-    { "from": "src/directives/v-on",              "to": "hashes/grammar/vue",          "type": "SCHEMA_CONTRACT",  "impact": "MEDIUM", "reason": "Native DOM event capture behaviors" },
-    { "from": "src/directives/v-slot",            "to": "hashes/grammar/vue",          "type": "SCHEMA_CONTRACT",  "impact": "MEDIUM", "reason": "Structural slot property framing" }
+    {
+      "from": "src/compiler/component.compiler",
+      "to": "hashes/grammar/typescript",
+      "type": "LAYER_DEPENDENCY",
+      "impact": "HIGH",
+      "reason": "Uses TS strict typing throughout"
+    },
+    {
+      "from": "src/compiler/component.compiler",
+      "to": "hashes/grammar/vue",
+      "type": "SCHEMA_CONTRACT",
+      "impact": "HIGH",
+      "reason": "Emits ref, computed, watch, onMounted, h() calls"
+    },
+    {
+      "from": "src/compiler/template.compiler",
+      "to": "hashes/grammar/vue",
+      "type": "SCHEMA_CONTRACT",
+      "impact": "HIGH",
+      "reason": "Emits h() VNode tree and directive bindings"
+    },
+    {
+      "from": "src/compiler/template.compiler",
+      "to": "src/directives/v-once",
+      "type": "LAYER_DEPENDENCY",
+      "impact": "MEDIUM",
+      "reason": "Compiles v-once directive"
+    },
+    {
+      "from": "src/compiler/template.compiler",
+      "to": "src/directives/v-pre",
+      "type": "LAYER_DEPENDENCY",
+      "impact": "MEDIUM",
+      "reason": "Compiles v-pre directive"
+    },
+    {
+      "from": "src/compiler/template.compiler",
+      "to": "src/directives/v-memo",
+      "type": "LAYER_DEPENDENCY",
+      "impact": "MEDIUM",
+      "reason": "Compiles v-memo directive"
+    },
+    {
+      "from": "src/compiler/template.compiler",
+      "to": "src/directives/v-cloak",
+      "type": "LAYER_DEPENDENCY",
+      "impact": "MEDIUM",
+      "reason": "Compiles v-cloak directive"
+    },
+    {
+      "from": "src/compiler/store.compiler",
+      "to": "hashes/grammar/pinia",
+      "type": "SCHEMA_CONTRACT",
+      "impact": "HIGH",
+      "reason": "Emits defineStore Setup Store pattern"
+    },
+    {
+      "from": "src/compiler/store.compiler",
+      "to": "hashes/grammar/effect",
+      "type": "LAYER_DEPENDENCY",
+      "impact": "MEDIUM",
+      "reason": "Async actions wrapped in Effect.gen + Layer"
+    },
+    {
+      "from": "src/compiler/component.compiler",
+      "to": "hashes/grammar/effect",
+      "type": "LAYER_DEPENDENCY",
+      "impact": "MEDIUM",
+      "reason": "Async actions wrapped in Effect.gen + Layer"
+    },
+    {
+      "from": "src/runtime/app.runtime",
+      "to": "hashes/grammar/vue",
+      "type": "SCHEMA_CONTRACT",
+      "impact": "HIGH",
+      "reason": "createApp, createPinia, createRouter calls"
+    },
+    {
+      "from": "src/runtime/app.runtime",
+      "to": "hashes/grammar/effect",
+      "type": "LAYER_DEPENDENCY",
+      "impact": "MEDIUM",
+      "reason": "Pipeline wrapped in Effect chain"
+    },
+    {
+      "from": "src/runtime/scope",
+      "to": "hashes/grammar/vue",
+      "type": "SCHEMA_CONTRACT",
+      "impact": "MEDIUM",
+      "reason": "Uses ref, computed for reactive scope"
+    },
+    {
+      "from": "src/ssr/render",
+      "to": "hashes/grammar/vue",
+      "type": "SCHEMA_CONTRACT",
+      "impact": "HIGH",
+      "reason": "createSSRApp + renderToString"
+    },
+    {
+      "from": "src/ssr/render",
+      "to": "hashes/grammar/effect",
+      "type": "LAYER_DEPENDENCY",
+      "impact": "MEDIUM",
+      "reason": "Effect.tryPromise wraps renderToString"
+    },
+    {
+      "from": "src/ssr/hydrate",
+      "to": "hashes/grammar/vue",
+      "type": "SCHEMA_CONTRACT",
+      "impact": "HIGH",
+      "reason": "createSSRApp client hydration mount"
+    },
+    {
+      "from": "src/effects/services",
+      "to": "hashes/grammar/effect",
+      "type": "SCHEMA_CONTRACT",
+      "impact": "HIGH",
+      "reason": "Context.Tag service definitions"
+    },
+    {
+      "from": "src/effects/layers",
+      "to": "hashes/grammar/effect",
+      "type": "SCHEMA_CONTRACT",
+      "impact": "HIGH",
+      "reason": "Layer.succeed + Layer.mergeAll"
+    },
+    {
+      "from": "src/parser/yaml.parser",
+      "to": "hashes/grammar/effect",
+      "type": "SCHEMA_CONTRACT",
+      "impact": "MEDIUM",
+      "reason": "Effect.try wraps js-yaml.load"
+    },
+    {
+      "from": "src/runtime/filters",
+      "to": "hashes/grammar/typescript",
+      "type": "LAYER_DEPENDENCY",
+      "impact": "MEDIUM",
+      "reason": "13 built-in filter fns; splitPipeExpr char-level scanner"
+    },
+    {
+      "from": "src/compiler/template.compiler",
+      "to": "src/runtime/filters",
+      "type": "SCHEMA_CONTRACT",
+      "impact": "HIGH",
+      "reason": "interpolate() calls splitPipeExpr + applyFilters for pipe resolution"
+    },
+    {
+      "from": "src/ssr/render",
+      "to": "src/runtime/app.runtime",
+      "type": "LAYER_DEPENDENCY",
+      "impact": "HIGH",
+      "reason": "renderEider delegates all compilation to createEiderApp"
+    },
+    {
+      "from": "src/ssr/hydrate",
+      "to": "src/runtime/app.runtime",
+      "type": "LAYER_DEPENDENCY",
+      "impact": "HIGH",
+      "reason": "hydrateEider delegates mount to createEiderApp"
+    },
+    {
+      "from": "src/directives/v-once",
+      "to": "hashes/grammar/vue",
+      "type": "SCHEMA_CONTRACT",
+      "impact": "MEDIUM",
+      "reason": "Static VNode rendering"
+    },
+    {
+      "from": "src/directives/v-pre",
+      "to": "hashes/grammar/vue",
+      "type": "SCHEMA_CONTRACT",
+      "impact": "MEDIUM",
+      "reason": "createStaticVNode for raw content"
+    },
+    {
+      "from": "src/directives/v-memo",
+      "to": "hashes/grammar/vue",
+      "type": "SCHEMA_CONTRACT",
+      "impact": "MEDIUM",
+      "reason": "Conditional re-render based on deps"
+    },
+    {
+      "from": "src/directives/v-cloak",
+      "to": "hashes/grammar/vue",
+      "type": "SCHEMA_CONTRACT",
+      "impact": "MEDIUM",
+      "reason": "Compile-time directive marker"
+    },
+    {
+      "from": "src/compiler/template.compiler",
+      "to": "src/directives/v-text",
+      "type": "LAYER_DEPENDENCY",
+      "impact": "MEDIUM",
+      "reason": "Compiles v-text directive"
+    },
+    {
+      "from": "src/compiler/template.compiler",
+      "to": "src/directives/v-html",
+      "type": "LAYER_DEPENDENCY",
+      "impact": "MEDIUM",
+      "reason": "Compiles v-html directive"
+    },
+    {
+      "from": "src/compiler/template.compiler",
+      "to": "src/directives/v-on",
+      "type": "LAYER_DEPENDENCY",
+      "impact": "MEDIUM",
+      "reason": "Compiles v-on directive"
+    },
+    {
+      "from": "src/compiler/template.compiler",
+      "to": "src/directives/v-slot",
+      "type": "LAYER_DEPENDENCY",
+      "impact": "MEDIUM",
+      "reason": "Compiles v-slot directive"
+    },
+    {
+      "from": "src/directives/v-text",
+      "to": "hashes/grammar/vue",
+      "type": "SCHEMA_CONTRACT",
+      "impact": "MEDIUM",
+      "reason": "Native text injections constraint"
+    },
+    {
+      "from": "src/directives/v-html",
+      "to": "hashes/grammar/vue",
+      "type": "SCHEMA_CONTRACT",
+      "impact": "MEDIUM",
+      "reason": "Native html injections constraint"
+    },
+    {
+      "from": "src/directives/v-on",
+      "to": "hashes/grammar/vue",
+      "type": "SCHEMA_CONTRACT",
+      "impact": "MEDIUM",
+      "reason": "Native DOM event capture behaviors"
+    },
+    {
+      "from": "src/directives/v-slot",
+      "to": "hashes/grammar/vue",
+      "type": "SCHEMA_CONTRACT",
+      "impact": "MEDIUM",
+      "reason": "Structural slot property framing"
+    }
   ],
   "dirty_propagation_rule": "When a node's fidelity_level changes to DIRTY, recursively mark all nodes reachable via outgoing edges as DIRTY"
 }

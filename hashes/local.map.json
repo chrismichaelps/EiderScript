@@ -1,6 +1,6 @@
 {
   "shard_id": "@root",
-  "state_anchor": "BigInt:0x8",
+  "state_anchor": "BigInt:0xA",
   "parent_bridge": null,
   "git_anchor": "HEAD",
   "cache_integrity": "VERIFIED",

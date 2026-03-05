@@ -4,7 +4,7 @@ grammar_refs:
   - "@root/hashes/grammar/vue.hash.md"
   - "@root/hashes/grammar/effect.hash.md"
 fidelity_level: Active
-state_anchor: "BigInt:0x2"
+state_anchor: "BigInt:0x9"
 ---
 
 # EiderScript Compiler — component.compiler.ts
@@ -53,3 +53,12 @@ Each `methods` entry → `() => scope.evaluate(body)` (sync, expr-eval)
 
 ### R-COMP-010: render() guards
 `render()` returns `null` when `ast.template` is `undefined` (headless components)
+
+### R-COMP-011: Emits
+`ast.emits` maps correctly to `emits` array on Vue component options. `emit` function is extracted from setup context and passed into Reactivity Scope.
+
+### R-COMP-012: Provide
+`ast.provide` maps literal values, evaluated signals, computeds, and methods into standard Vue `provide(key, val)`.
+
+### R-COMP-013: Inject
+`ast.inject` aliases array/object keys to `inject()` resolution which is injected directly into `scopeProxy` during Reactivity Scope instantiation.
