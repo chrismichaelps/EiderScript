@@ -1,19 +1,19 @@
 ---
-State_ID: BigInt(0x2)
+State_ID: BigInt(0xB)
 Grammar_Lock: "@root/hashes/grammar/typescript.hash.md"
 File: "@root/src/schema/component.schema.ts"
 ---
 ## @Schema.Component
 ### [Signatures]
-- `PropSchema: ZodObject<{ type: ZodString; default: ZodOptional<ZodAny> }>`
-- `SignalSchema: ZodRecord<ZodAny>`
+- `PropSchema: ZodObject<{ type: ZodString; default: ZodOptional<ZodUnknown> }>`
+- `SignalSchema: ZodRecord<ZodUnknown>`
 - `ComputedSchema: ZodRecord<ZodString>`
 - `MethodSchema: ZodString`
 - `ActionSchema: ZodObject<{ async: ZodOptional<ZodBoolean>; body: ZodString }>`
 - `WatchEntrySchema: ZodObject<{ handler: ZodString; immediate?: ZodBoolean; deep?: ZodBoolean }>`
 - `WatchSchema: ZodRecord<WatchEntrySchema>`
 - `LifecycleSchema: ZodString`
-- `TemplateSchema: ZodAny`
+- `TemplateSchema: ZodUnknown`
 - `StylesSchema: ZodObject<{ scoped?: ZodBoolean; css?: ZodString }>`
 - `ComponentSchema: ZodObject<{ name, props?, signals?, computeds?, methods?, actions?, watch?, onMounted?, onUnmounted?, template, styles? }>`
 ### [Governance]

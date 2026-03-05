@@ -1,11 +1,11 @@
 ---
-State_ID: BigInt(0x2)
+State_ID: BigInt(0xB)
 Grammar_Lock: "@root/hashes/grammar/typescript.hash.md"
 File: "@root/src/schema/store.schema.ts"
 ---
 ## @Schema.Store
 ### [Signatures]
-- `StoreStateSchema: ZodRecord<ZodAny>`
+- `StoreStateSchema: ZodRecord<ZodUnknown>`
 - `StoreGetterSchema: ZodRecord<ZodString>`
 - `StoreActionSchema: ZodObject<{ async?: ZodBoolean; body: ZodString }>`
 - `StoreWatchEntrySchema: ZodObject<{ handler: ZodString; immediate?: ZodBoolean; deep?: ZodBoolean }>`

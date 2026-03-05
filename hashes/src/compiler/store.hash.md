@@ -4,7 +4,7 @@ grammar_refs:
   - "@root/hashes/grammar/pinia.hash.md"
   - "@root/hashes/grammar/effect.hash.md"
 fidelity_level: Active
-state_anchor: "BigInt:0x2"
+state_anchor: "BigInt:0xB"
 ---
 
 # EiderScript Compiler — store.compiler.ts

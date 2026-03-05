@@ -5,7 +5,7 @@ grammar_refs:
   - "@root/hashes/grammar/pinia.hash.md"
   - "@root/hashes/grammar/effect.hash.md"
 fidelity_level: Active
-state_anchor: "BigInt:0x2"
+state_anchor: "BigInt:0xB"
 ---
 
 # EiderScript Runtime — app.runtime.ts
@@ -27,6 +27,7 @@ parseYaml(yaml)
   → createApp(RootComponent)
   → app.use(createPinia())
   → app.use(router)
+  → evaluate global.plugins and execute app.use(input.plugins[name])
   → store registration
   → return app
 ```

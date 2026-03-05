@@ -4,7 +4,7 @@ grammar_refs:
   - "@root/hashes/grammar/vue.hash.md"
   - "@root/hashes/grammar/typescript.hash.md"
 fidelity_level: Active
-state_anchor: "BigInt:0x2"
+state_anchor: "BigInt:0xB"
 ---
 
 # EiderScript Compiler — template.compiler.ts
@@ -44,3 +44,6 @@ Tag key grammar:
 Empty object `{}` → `null`
 `undefined` node → `null`
 Scalars (number, boolean) → stringified
+
+### R-TPL-006: Vue Built-in Components
+Strings matching Vue internals (`teleport`, `suspense`, `keep-alive`, `transition`, `transition-group`) are mapped to the actual imported `vue` Component primitves instead of raw string tags via `builtInTagMap`.
