@@ -19,13 +19,47 @@ export interface ScopeContext {
 
 const parser = new Parser()
 
-/** Boundary type extracted from expr-eval — avoids manual `any`. */
+parser.functions.length = (obj: unknown): number => {
+  if (Array.isArray(obj) || typeof obj === 'string') return obj.length
+  if (obj != null && typeof obj === 'object') return Object.keys(obj).length
+  return 0
+}
+
 type ExprBindings = Parameters<ReturnType<typeof parser.parse>['evaluate']>[0]
 
 /**
- * Splits on exactly `||` (double pipe), preserving single `|`
- * (filter pipe) and ignoring triple `|||`.
+ * Detects standalone JS syntax that has no meaningful data-access
+ * value in EiderScript and should silently return `undefined`.
  */
+function isPureJsSyntax(expr: string): boolean {
+  const t = expr.trim()
+  if (/^\(?[^)]*\)?\s*=>/.test(t)) return true   // arrow literal
+  if (/^class\s/.test(t)) return true            // class declaration
+  if (/^function[\s(]/.test(t)) return true      // function decl/expr
+  return false
+}
+
+const SMART_DOUBLE_RE = /[\u201C\u201D]/g
+const SMART_SINGLE_RE = /[\u2018\u2019]/g
+
+function sanitizeExpr(raw: string): string {
+  return raw.replace(SMART_DOUBLE_RE, '"').replace(SMART_SINGLE_RE, "'")
+}
+
+/**
+ * Rewrites `identifier.length` and `path.to.prop.length` →
+ * `length(identifier)` / `length(path.to.prop)`.
+ *
+ * expr-eval treats `length` as a reserved token and rejects
+ * `.length` property access. The registered `length()` function
+ * handles arrays, strings, and objects.
+ *
+ * Does NOT match `.length` after non-word characters (e.g.
+ * `).length` in method chains) — those go to the JS fallback.
+ */
+const DOT_LENGTH_RE =
+  /\b([a-zA-Z_$][\w$]*(?:\.[a-zA-Z_$][\w$]*)*)\.length\b/g
+
 function splitLogicalOr(expr: string): string[] {
   const segments: string[] = []
   let current = ''
@@ -39,7 +73,7 @@ function splitLogicalOr(expr: string): string[] {
     if (ch === '|' && next === '|' && prev !== '|' && afterNext !== '|') {
       segments.push(current.trim())
       current = ''
-      i++ // skip second pipe
+      i++
     } else {
       current += ch
     }
@@ -50,45 +84,147 @@ function splitLogicalOr(expr: string): string[] {
 }
 
 /**
- * Normalises JS logical operators to expr-eval equivalents:
- *   `&&`  →  `and`
- *   `||`  →  value-preserving ternary: `(a) ? (a) : (b)`
- *
- * Native expr-eval keywords (`and`, `or`, `not`) pass through unchanged.
+ * Transforms JS-like syntax into expr-eval equivalents:
+ *   `obj.length`  →  `length(obj)`
+ *   `&&`          →  `and`
+ *   `||`          →  value-preserving ternary
  */
-function normalizeExpr(raw: string): string {
-  let expr = raw.replace(/&&/g, ' and ')
+function normalizeForExprEval(expr: string): string {
+  let result = expr.replace(DOT_LENGTH_RE, 'length($1)')
+  result = result.replace(/&&/g, ' and ')
 
-  const segments = splitLogicalOr(expr)
+  const segments = splitLogicalOr(result)
   if (segments.length > 1) {
-    expr = segments.reduceRight(
+    result = segments.reduceRight(
       (fallback, segment) => `(${segment}) ? (${segment}) : (${fallback})`,
     )
   }
 
-  return expr
+  return result
+}
+
+const JS_RESERVED = new Set([
+  'true', 'false', 'null', 'undefined', 'NaN', 'Infinity',
+  'if', 'else', 'for', 'while', 'do', 'switch', 'case', 'break',
+  'continue', 'return', 'throw', 'try', 'catch', 'finally',
+  'new', 'delete', 'typeof', 'instanceof', 'in', 'of',
+  'var', 'let', 'const', 'function', 'class', 'extends',
+  'import', 'export', 'default', 'from', 'as',
+  'async', 'await', 'yield', 'this', 'super', 'void', 'with',
+  'and', 'or', 'not',
+])
+
+function extractIdentifiers(expr: string): string[] {
+  const ids = new Set<string>()
+  const re = /\b([a-zA-Z_$][\w$]*)\b/g
+  let match: RegExpExecArray | null
+  while ((match = re.exec(expr)) !== null) {
+    const id = match[1]!
+    if (!JS_RESERVED.has(id)) ids.add(id)
+  }
+  return [...ids]
 }
 
 /**
- * Evaluates an expression string against scope bindings.
- * Returns `undefined` for unparseable or failing expressions.
+ * Arrow-callback method chains: `.filter(t => ...)`, `.map(x => ...)`
+ *
+ * This is the ONE pattern class that:
+ *   1. expr-eval fundamentally cannot parse (arrow syntax)
+ *   2. Is commonly used in EiderScript templates
+ *   3. Is safe to evaluate via Function constructor
  */
-function safeEvaluate(
+const ARROW_CHAIN_RE = /\.\w+\s*\([^)]*=>/
+
+/** Patterns that cause unhandled async rejections in `new Function`. */
+const DANGEROUS_JS_RE = /\bimport\s*\(/
+
+/**
+ * Evaluates expressions containing JS-only syntax (arrow callbacks,
+ * method chains) using a parameterised Function constructor.
+ *
+ * Scope bindings are passed as explicit parameters — no `with()`,
+ * no `eval()`.
+ */
+function jsFallbackEvaluate(
   expr: string,
   bindings: Record<string, unknown>,
 ): unknown {
+  const ids = extractIdentifiers(expr)
+  const paramNames: string[] = []
+  const paramValues: unknown[] = []
+
+  for (const id of ids) {
+    paramNames.push(id)
+    try {
+      paramValues.push(bindings[id])
+    } catch {
+      paramValues.push(undefined)
+    }
+  }
+
   try {
-    return parser.parse(normalizeExpr(expr)).evaluate(bindings as ExprBindings)
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    const fn = new Function(
+      ...paramNames,
+      `"use strict"; return (${expr})`,
+    )
+    const result: unknown = fn(...paramValues)
+
+    // Suppress async results — safeEvaluate is a synchronous API.
+    // Without this, a rejected Promise escapes the try/catch and
+    // becomes an unhandled rejection (e.g. ERR_VM_DYNAMIC_IMPORT).
+    if (result instanceof Promise) {
+      result.catch(() => { })
+      return undefined
+    }
+
+    return result
   } catch {
     return undefined
   }
 }
 
-/**
- * Builds Vue refs from signal definitions.
- * Interpolation placeholder strings (e.g. `{{ expr }}`) initialise
- * to `undefined` — they are resolved at render time.
- */
+/** 
+/*  expr-eval (sandboxed, no code generation)                 
+/*    Handles: arithmetic, comparisons, boolean logic, function
+/*    calls, simple property access, ternaries.                       
+/*    Throws on: undefined variables, arrow syntax, assignments.      
+/*                                                                    
+/*  JS fallback (Function constructor, explicit params)       
+/*    ONLY activated for arrow-callback method chains.                
+/*    Handles: .filter(x => ...), .map(x => ...), .reduce(...)        
+/*    Blocked for: import(), standalone assignments, all other         
+/*    patterns that don't need JS-specific syntax.    
+**/
+
+function safeEvaluate(
+  expr: string,
+  bindings: Record<string, unknown>,
+): unknown {
+  const sanitized = sanitizeExpr(expr)
+  if (!sanitized.trim()) return undefined
+  if (isPureJsSyntax(sanitized)) return undefined
+
+  // expr-eval — safe sandbox, no code generation
+  try {
+    return parser
+      .parse(normalizeForExprEval(sanitized))
+      .evaluate(bindings as ExprBindings)
+  } catch {
+    // expr-eval failed — undefined variable, parse error, or
+    // unsupported syntax. Check if JS fallback is appropriate.
+  }
+
+  // JS fallback — only for arrow-callback method chains
+  if (ARROW_CHAIN_RE.test(sanitized) && !DANGEROUS_JS_RE.test(sanitized)) {
+    return jsFallbackEvaluate(sanitized, bindings)
+  }
+
+  // All other failures: unknown variable, assignment syntax,
+  // reserved-word collisions, etc. — return undefined.
+  return undefined
+}
+
 function buildSignals(
   defs: Readonly<Record<string, unknown>>,
   interpolationPrefix: string,
@@ -98,21 +234,12 @@ function buildSignals(
   for (const [key, initial] of Object.entries(defs)) {
     const isPlaceholder =
       typeof initial === 'string' && initial.startsWith(interpolationPrefix)
-
     signals[key] = ref(isPlaceholder ? undefined : initial)
   }
 
   return signals
 }
 
-/**
- * Internal state backing the scope proxy.
- *
- * `computeds` and `methods` are populated **after** proxy creation
- * (they reference the proxy for evaluation). The proxy reads from
- * these same object references, so late additions are immediately
- * visible through the `get` trap.
- */
 interface StateTree {
   readonly props: Record<string, unknown>
   readonly signals: Record<string, Ref<unknown>>
@@ -121,10 +248,6 @@ interface StateTree {
   readonly context: ScopeContext
 }
 
-/**
- * Resolution priority:
- *   emit → signals → computeds → methods → props → injections
- */
 function resolveKey(tree: StateTree, key: string): unknown {
   if (key === 'emit') return tree.context.emit
   if (key in tree.signals) return tree.signals[key]!.value
@@ -147,13 +270,6 @@ function isKnownKey(tree: StateTree, key: string): boolean {
   )
 }
 
-/**
- * Flat `Record<string, unknown>` proxy over the entire state tree.
- *
- * - **get**: resolves through the priority chain
- * - **set**: only signal refs are mutable; props/injections are blocked
- * - **has**: supports `with()`-style membership checks from expr-eval
- */
 function buildProxy(tree: StateTree): Record<string, unknown> {
   return new Proxy(Object.create(null) as Record<string, unknown>, {
     get(_, key) {
@@ -163,13 +279,11 @@ function buildProxy(tree: StateTree): Record<string, unknown> {
     set(_, key, value) {
       if (typeof key !== 'string') return false
 
-      // Signals are the only mutable bindings
       if (key in tree.signals) {
         tree.signals[key]!.value = value
         return true
       }
 
-      // Props and injections are read-only
       const isReadOnly =
         key in tree.props ||
         Boolean(tree.context.inject && key in tree.context.inject)
@@ -187,7 +301,6 @@ function buildProxy(tree: StateTree): Record<string, unknown> {
   })
 }
 
-/** Builds a reactive evaluation scope from component definitions. */
 export function createScope(
   props: Record<string, unknown>,
   signalDefs: Record<string, unknown> = {},
@@ -198,15 +311,12 @@ export function createScope(
 ): Scope {
   const signals = buildSignals(signalDefs, interpolationPrefix)
 
-  // Mutable containers — populated below, but the proxy reads from
-  // these same references so late additions are visible immediately.
   const computeds: Record<string, ComputedRef<unknown>> = {}
   const methods: Record<string, (...args: unknown[]) => unknown> = {}
 
   const tree: StateTree = { props, signals, computeds, methods, context }
   const proxy = buildProxy(tree)
 
-  // Wire computed refs (may reference signals, methods, props via proxy)
   for (const [key, expr] of Object.entries(computedDefs)) {
     computeds[key] =
       typeof expr === 'string'
@@ -214,7 +324,6 @@ export function createScope(
         : computed(() => expr)
   }
 
-  // Wire methods (expression strings evaluated against live scope state)
   for (const [key, expr] of Object.entries(methodDefs)) {
     methods[key] = () => safeEvaluate(expr, proxy)
   }
@@ -236,5 +345,55 @@ export function createScope(
         { ...context, inject: { ...(context.inject ?? {}), ...localProps } },
         interpolationPrefix,
       ),
+  }
+}
+
+export function createRenderScope(
+  ctx: Record<string, unknown>,
+  interpolationPrefix = '{{',
+): Scope {
+  const guarded = new Proxy(ctx as object, {
+    get(target, key) {
+      if (typeof key === 'string' && key in target) {
+        return (target as Record<string, unknown>)[key]
+      }
+      return undefined
+    },
+    has(target, key) {
+      return typeof key === 'string' && key in target
+    },
+  })
+
+  return {
+    signals: {},
+    computeds: {},
+    methods: {},
+    props: {},
+
+    evaluate: (expr: string) =>
+      safeEvaluate(expr, guarded as Record<string, unknown>),
+
+    createChild: (localProps: Record<string, unknown>) => {
+      const child = new Proxy(
+        Object.create(null) as Record<string, unknown>,
+        {
+          get(_, key) {
+            if (typeof key !== 'string') return undefined
+            if (key in localProps) return localProps[key]
+            try {
+              if (key in ctx) return (ctx as Record<string, unknown>)[key]
+            } catch {
+              // Guard: 'in' can throw on certain Vue internal proxies
+            }
+            return undefined
+          },
+          has(_, key) {
+            if (typeof key !== 'string') return false
+            return key in localProps || key in (ctx as object)
+          },
+        },
+      )
+      return createRenderScope(child, interpolationPrefix)
+    },
   }
 }

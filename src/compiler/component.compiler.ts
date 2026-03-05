@@ -11,7 +11,7 @@ import {
 } from 'vue'
 import { Effect } from 'effect'
 import type { ComponentAST } from '../schema/component.schema.js'
-import { createScope } from '../runtime/scope.js'
+import { createScope, createRenderScope } from '../runtime/scope.js'
 import type { Scope } from '../runtime/scope.js'
 import { CompileError } from '../effects/errors.js'
 import { LiveServices } from '../effects/layers.js'
@@ -348,21 +348,20 @@ export const compileComponent = (
           return buildSetupBindings(scope, actions)
         }
 
-        const render = (): ReturnType<typeof compileNode> =>
-          ast.template != null
-            ? compileNode(
-              ast.template,
-              createScope(
-                {},
-                ast.signals ?? {},
-                ast.computeds ?? {},
-                ast.methods ?? {},
-                undefined,
-                constants.interpolationPrefix,
-              ),
-              tplConfig,
-            )
-            : null
+        const render = function (
+          this: Record<string, unknown>,
+          ctx: Record<string, unknown>,
+        ): ReturnType<typeof compileNode> {
+          if (ast.template == null) return null
+
+          // Vue binds `this` to the component proxy, but provides `ctx` as first arg.
+          const renderCtx = this ?? ctx
+          return compileNode(
+            ast.template,
+            createRenderScope(renderCtx, constants.interpolationPrefix),
+            tplConfig,
+          )
+        }
 
         return {
           name: ast.name,

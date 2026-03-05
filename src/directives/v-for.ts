@@ -50,28 +50,7 @@ export function compileVFor(
     iterVars[itemVar] = item
     if (indexVar) iterVars[indexVar] = idx
 
-    const iterScope: Scope = {
-      signals: scope.signals,
-      computeds: scope.computeds,
-      methods: scope.methods,
-      props: { ...scope.props, ...iterVars },
-      createChild: (localProps: Record<string, unknown>) => {
-        return scope.createChild({ ...iterVars, ...localProps })
-      },
-      evaluate: (e: string) => {
-        try {
-          // Use a simple variable substitution for iteration vars
-          const allVars: Record<string, unknown> = {}
-          for (const [k, r] of Object.entries(scope.signals)) allVars[k] = r.value
-          for (const [k, c] of Object.entries(scope.computeds)) allVars[k] = c.value
-          Object.assign(allVars, scope.methods, scope.props, iterVars)
-          // Delegate to parent evaluate but with iter vars in props fallback
-          return scope.evaluate(e)
-        } catch {
-          return undefined
-        }
-      },
-    }
+    const iterScope = scope.createChild(iterVars)
 
     try {
       const vnode = compileNode(children, iterScope, config)
