@@ -99,7 +99,7 @@ export const createEiderApp = (
       ? {
         name: appAst.name,
         render() {
-          const scope = createScope({}, {}, {}, {}, eiderConstants.interpolationPrefix)
+          const scope = createScope({}, {}, {}, {}, undefined, eiderConstants.interpolationPrefix)
           return compileNode(appAst.template, scope, tplConfig)
         },
       }
