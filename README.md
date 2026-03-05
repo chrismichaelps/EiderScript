@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/eider-logo.png" alt="EiderScript Logo" height="228" />
+  <img src="public/eider-logo-v2.png" alt="EiderScript Logo" height="128" />
 </p>
 
 <p align="center">
