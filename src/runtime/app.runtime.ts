@@ -88,7 +88,9 @@ export const createEiderApp = (
 
     // Compile inline components (embedded in app YAML under `components:`)
     // These are already Zod-validated — no re-parsing needed.
-    for (const compAst of appAst.components ?? []) {
+    const componentsToCompile = appAst.components ?? []
+
+    for (const compAst of componentsToCompile) {
       const component = yield* compileComponent(compAst).pipe(
         Effect.mapError((e) => new RuntimeError({ message: e.message, cause: e })),
       )

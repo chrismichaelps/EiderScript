@@ -116,7 +116,10 @@ function registerProvisions(
       continue
     }
 
-    provide(key, computed(() => scope.evaluate(value)))
+    provide(
+      key,
+      computed(() => scope.evaluate(value)),
+    )
   }
 }
 
@@ -227,6 +230,25 @@ function buildAsyncExecutor(
   }
 }
 
+type MethodValue = string | { async?: boolean; body: string }
+
+function normalizeMethods(
+  methods: Record<string, MethodValue> | undefined,
+): Record<string, MethodValue> {
+  if (!methods) return {}
+  const normalized: Record<string, MethodValue> = {}
+  for (const [key, value] of Object.entries(methods)) {
+    if (key.startsWith('async ')) {
+      const actualKey = key.slice(6)
+      const body = typeof value === 'string' ? value : value.body
+      normalized[actualKey] = { async: true, body }
+    } else {
+      normalized[key] = value
+    }
+  }
+  return normalized
+}
+
 function buildActions(
   actionDefs: Record<string, ActionDef> | undefined,
   scope: Scope,
@@ -271,11 +293,11 @@ function registerLifecycleHooks(ast: ComponentAST, scope: Scope): void {
   const hooks: ReadonlyArray<
     [expr: string | undefined, register: (cb: () => void) => void]
   > = [
-      [ast.onMounted, onMounted],
-      [ast.onUnmounted, onUnmounted],
-      [ast.onBeforeMount, onBeforeMount],
-      [ast.onUpdated, onUpdated],
-    ]
+    [ast.onMounted, onMounted],
+    [ast.onUnmounted, onUnmounted],
+    [ast.onBeforeMount, onBeforeMount],
+    [ast.onUpdated, onUpdated],
+  ]
 
   for (const [expr, register] of hooks) {
     if (expr) register(() => scope.evaluate(expr))
@@ -320,11 +342,13 @@ export const compileComponent = (
           const emit = ctx?.emit
           const injected = resolveInjections(ast.inject)
 
+          const normalizedMethods = normalizeMethods(ast.methods)
+
           const scope = createScope(
             props,
             ast.signals ?? {},
             ast.computeds ?? {},
-            ast.methods ?? {},
+            normalizedMethods,
             { emit, inject: injected },
             constants.interpolationPrefix,
           )
@@ -374,7 +398,7 @@ export const compileComponent = (
       catch: (cause) =>
         new CompileError({
           message: `${constants.errCompileFailed} ${cause instanceof Error ? cause.message : String(cause)}`,
-          source: ast.name,
+          source: ast.name ?? 'UnknownComponent',
         }),
     })
   })
