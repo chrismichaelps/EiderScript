@@ -121,7 +121,15 @@ export function compileVOn(
       const method: unknown = scope.methods[rawHandler]
       result[propName] =
         typeof method === 'function'
-          ? (): unknown => (method as EventHandler)()
+          ? (...args: unknown[]): unknown => {
+              const result = (method as EventHandler)(...args)
+              if (result instanceof Promise) {
+                result.catch((err) =>
+                  console.error(`Error in async method "${rawHandler}":`, err),
+                )
+              }
+              return result
+            }
           : rawHandler
       return result
     }

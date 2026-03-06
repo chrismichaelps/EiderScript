@@ -297,6 +297,15 @@ export function compileNode(
   if (typeof node === 'string') return interpolate(node, scope)
   if (typeof node !== 'object' || node === null) return String(node)
 
+  if (Array.isArray(node)) {
+    const vnodes = node
+      .map((n) => compileNode(n, scope, config))
+      .filter((n): n is VNode | string => n !== null)
+    if (vnodes.length === 0) return null
+    if (vnodes.length === 1 && typeof vnodes[0] !== 'string') return vnodes[0] as VNode
+    return h(config.fragmentHtmlTag || 'template', {}, vnodes) as VNode
+  }
+
   const entries = Object.entries(node as Record<string, unknown>)
   if (entries.length === 0) return null
 
@@ -496,16 +505,35 @@ export function compileNode(
         children = interpolate(value, scope)
       } else if (typeof value !== 'object' || value === null) {
         children = String(value ?? '')
+      } else if (Array.isArray(value)) {
+        children = value
+          .map((n) => compileNode(n, scope, config))
+          .filter((n): n is VNode | string => n !== null)
       } else {
-        const childEntries = Object.entries(
-          value as Record<string, unknown>,
-        ).filter(([k]) => k.trim().split(/\s+/)[0] !== 'attrs')
-        const childNode = compileNode(
-          Object.fromEntries(childEntries),
-          scope,
-          config,
-        )
-        children = childNode !== null ? [childNode as VNode] : []
+        const valueObj = value as Record<string, unknown>
+        const explicitChildren = valueObj['children']
+
+        if (explicitChildren !== undefined) {
+          const compiled = compileNode(explicitChildren, scope, config)
+          if (Array.isArray(compiled)) {
+            children = compiled
+          } else if (compiled !== null) {
+            children = [compiled as VNode | string]
+          }
+        } else {
+          const childEntries = Object.entries(valueObj).filter(
+            ([k]) => {
+              const base = k.trim().split(/\s+/)[0]
+              return base !== 'attrs' && base !== 'children'
+            }
+          )
+          const childNode = compileNode(
+            Object.fromEntries(childEntries),
+            scope,
+            config,
+          )
+          children = childNode !== null ? [childNode as VNode] : []
+        }
       }
     }
 
