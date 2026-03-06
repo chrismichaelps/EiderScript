@@ -7,7 +7,7 @@
  *   {{ str | truncate:80 }}
  *
  * Pipe syntax: {{ expr | filterName }} or {{ expr | filterName:arg1:arg2 }}
- * Multiple pipes chain left→right: {{ str | trim | capitalize }}
+ * Multiple pipes chain left to right: {{ str | trim | capitalize }}
  *
  * IMPORTANT: `|` inside a boolean expression (||) is NOT a pipe.
  * Detection rule: a pipe `|` is only recognized when surrounded by word chars
@@ -132,7 +132,7 @@ export function applyFilters(value: unknown, pipes: string[]): unknown {
 
 /** Splits a raw interpolation expression string into (baseExpr, pipes[]).
  *  Only splits on `|` that is NOT followed immediately by another `|` (i.e. not `||`).
- *  Example: `"count > 0 || show | capitalize"` → `["count > 0 || show", ["capitalize"]]`
+ *  Example: `"count > 0 || show | capitalize"` becomes `["count > 0 || show", ["capitalize"]]`
  */
 export function splitPipeExpr(raw: string): { expr: string; pipes: string[] } {
   // Split on single `|` (not `||`), from right-to-left so we don't consume `||`

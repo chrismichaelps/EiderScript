@@ -79,21 +79,21 @@ export function normalizeYaml(source: string): string {
     const trimmed = line.trimStart()
     const indent = line.length - trimmed.length
 
-    // Empty lines and comments → emit unchanged
+    // Empty lines and comments to emit unchanged
     if (!trimmed || trimmed.startsWith('#')) {
       out.push(line)
       i++
       continue
     }
 
-    // YAML sequence items (`- …`, `- `) → emit unchanged (never join)
+    // YAML sequence items (`- …`, `- `) to emit unchanged (never join)
     if (trimmed.startsWith('- ') || trimmed === '-') {
       out.push(line)
       i++
       continue
     }
 
-    // Lines with inline YAML scalar values (key: value) → emit unchanged
+    // Lines with inline YAML scalar values (key: value) to emit unchanged
     // (e.g. `name: Counter`, `path: /`, but NOT bare `dark:bg-gray-900`)
     if (hasInlineValue(trimmed)) {
       out.push(line)
@@ -101,7 +101,7 @@ export function normalizeYaml(source: string): string {
       continue
     }
 
-    // Lines already ending with `:` (complete YAML key) → emit unchanged
+    // Lines already ending with `:` (complete YAML key) to emit unchanged
     if (isYamlKeyEnd(trimmed)) {
       out.push(line)
       i++

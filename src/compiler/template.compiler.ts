@@ -1,4 +1,4 @@
-/** @EiderScript.Compiler.Template - YAML template tree → Vue h() VNode tree */
+/** @EiderScript.Compiler.Template - YAML template tree to Vue h() VNode tree */
 import {
   h,
   getCurrentInstance,
@@ -281,7 +281,7 @@ export function interpolate(text: string, scope: Scope): string {
   })
 }
 
-/** Converts a YAML template node → VNode */
+/** Converts a YAML template node to VNode */
 export function compileNode(
   node: unknown,
   scope: Scope,

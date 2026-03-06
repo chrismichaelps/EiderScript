@@ -1,4 +1,4 @@
-/** @EiderScript.Runtime.App - createEiderApp factory: compiles ASTs → Vue app instance */
+/** @EiderScript.Runtime.App - createEiderApp factory: compiles ASTs to Vue app instance */
 import { createApp, createSSRApp, type Plugin } from 'vue'
 import { createPinia } from 'pinia'
 import { Effect } from 'effect'
@@ -19,9 +19,9 @@ import type { StoreAST } from '../schema/store.schema.js'
 export interface EiderAppInput {
   /** Main app .eider.yaml content (kind: app) */
   app: string
-  /** Map of component name → .eider.yaml content (kind: component) */
+  /** Map of component name to .eider.yaml content (kind: component) */
   components?: Record<string, string>
-  /** Map of store id → .eider.yaml content (kind: store) */
+  /** Map of store id to .eider.yaml content (kind: store) */
   stores?: Record<string, string>
   /** Custom Vue plugins to register (mapped by their name in app global plugins list) */
   plugins?: Record<string, Plugin>
@@ -36,7 +36,7 @@ export interface EiderApp {
   readonly mount: (selector: string) => void
 }
 
-/** @EiderScript.Runtime.App - Main public API: compiles YAML → live Vue app */
+/** @EiderScript.Runtime.App - Main public API: compiles YAML to live Vue app */
 export const createEiderApp = (
   input: EiderAppInput,
 ): Effect.Effect<EiderApp, RuntimeError> =>

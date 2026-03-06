@@ -1,4 +1,4 @@
-/** @EiderScript.Compiler.Store - StoreAST → Pinia defineStore (Setup Store pattern) */
+/** @EiderScript.Compiler.Store - StoreAST to Pinia defineStore (Setup Store pattern) */
 import { ref, computed, watch } from 'vue'
 import type { ComputedRef } from 'vue'
 import { defineStore } from 'pinia'

@@ -1,4 +1,4 @@
-/** @EiderScript.SSR.Render - Server-side rendering: EiderApp → HTML string */
+/** @EiderScript.SSR.Render - Server-side rendering: EiderApp to HTML string */
 import { renderToString } from '@vue/server-renderer'
 import { Effect } from 'effect'
 import { createEiderApp } from '../runtime/app.runtime.js'
@@ -21,7 +21,7 @@ export const renderEider = (
       try: async () => {
         if (app.router && app.router.getRoutes().length > 0) {
           const firstRoute = app.router.getRoutes()[0]!
-          await app.router.push(firstRoute.path).catch(() => {})
+          await app.router.push(firstRoute.path).catch(() => { })
         }
         return renderToString(app.vueApp)
       },

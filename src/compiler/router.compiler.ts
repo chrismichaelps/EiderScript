@@ -1,4 +1,4 @@
-/** @EiderScript.Compiler.Router - AppAST → Vue Router createRouter configuration */
+/** @EiderScript.Compiler.Router - AppAST to Vue Router createRouter configuration */
 import {
   createRouter,
   createWebHistory,

@@ -75,7 +75,7 @@ function splitLogicalOr(expr: string): string[] {
 function normalizeForExprEval(expr: string): string {
   let result = expr.replace(DOT_LENGTH_RE, 'length($1)')
 
-  // Strict equality/inequality → loose (expr-eval only supports == and !=)
+  // Strict equality/inequality to loose (expr-eval only supports == and !=)
   result = result.replace(/!==/g, '!=')
   result = result.replace(/===/g, '==')
 

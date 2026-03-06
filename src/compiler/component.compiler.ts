@@ -1,4 +1,4 @@
-/** @EiderScript.Compiler.Component — ComponentAST → Vue component definition object */
+/** @EiderScript.Compiler.Component — ComponentAST to Vue component definition object */
 import {
   computed,
   onBeforeMount,
