@@ -49,51 +49,38 @@ components:
 
           # Add todo input
           div .flex .gap-2 .mb-6:
-            input .flex-1 .rounded-xl .border .border-gray-200 .dark:border-gray-700
-              .bg-white .dark:bg-gray-800 .text-gray-900 .dark:text-white
-              .px-4 .py-3 .text-sm .outline-none
-              .focus:ring-2 .focus:ring-indigo-400 .transition-all:
+            input .flex-1 .rounded-xl .border .border-gray-200 .dark:border-gray-700 .bg-white .dark:bg-gray-800 .text-gray-900 .dark:text-white .px-4 .py-3 .text-sm .outline-none .focus:ring-2 .focus:ring-indigo-400 .transition-all:
               v-model: newTodo
               attrs:
                 placeholder: "What needs to be done?"
                 type: text
-            button .bg-indigo-500 .hover:bg-indigo-600 .active:scale-95
-              .text-white .font-semibold .px-6 .py-3 .rounded-xl
-              .transition-all .duration-150 .shadow-sm:
+            button .bg-indigo-500 .hover:bg-indigo-600 .active:scale-95 .text-white .font-semibold .px-6 .py-3 .rounded-xl .transition-all .duration-150 .shadow-sm:
               "@click": addTodo
               text: "Add"
 
           # Filter tabs
           div .flex .gap-1 .bg-white .dark:bg-gray-800 .p-1 .rounded-lg .mb-4 .shadow-sm:
-            button .flex-1 .py-2 .px-3 .text-sm .font-medium .rounded-md .transition-colors
-              .text-gray-500 .hover:text-gray-700 .dark:text-gray-400:
-              "@click": "setFilter('all')"
-              text: "All ({{ totalCount }})"
-            button .flex-1 .py-2 .px-3 .text-sm .font-medium .rounded-md .transition-colors
-              .text-gray-500 .hover:text-gray-700 .dark:text-gray-400:
-              "@click": "setFilter('pending')"
-              text: "Pending ({{ pendingCount }})"
-            button .flex-1 .py-2 .px-3 .text-sm .font-medium .rounded-md .transition-colors
-              .text-gray-500 .hover:text-gray-700 .dark:text-gray-400:
-              "@click": "setFilter('done')"
-              text: "Done ({{ doneCount }})"
+            - button .flex-1 .py-2 .px-3 .text-sm .font-medium .rounded-md .transition-colors .text-gray-500 .hover:text-gray-700 .dark:text-gray-400:
+                "@click": "setFilter('all')"
+                text: "All ({{ totalCount }})"
+            - button .flex-1 .py-2 .px-3 .text-sm .font-medium .rounded-md .transition-colors .text-gray-500 .hover:text-gray-700 .dark:text-gray-400:
+                "@click": "setFilter('pending')"
+                text: "Pending ({{ pendingCount }})"
+            - button .flex-1 .py-2 .px-3 .text-sm .font-medium .rounded-md .transition-colors .text-gray-500 .hover:text-gray-700 .dark:text-gray-400:
+                "@click": "setFilter('done')"
+                text: "Done ({{ doneCount }})"
 
           # Todo list
           div .space-y-2:
-            div .flex .items-center .gap-3 .bg-white .dark:bg-gray-800
-              .rounded-xl .px-4 .py-3 .shadow-sm .group .transition-all
-              .hover:shadow-md:
+            div .flex .items-center .gap-3 .bg-white .dark:bg-gray-800 .rounded-xl .px-4 .py-3 .shadow-sm .group .transition-all .hover:shadow-md:
               v-for: "todo in todos"
               :key: todo.id
 
               # Checkbox
-              button .w-6 .h-6 .rounded-full .border-2 .border-gray-300
-                .dark:border-gray-600 .flex-shrink-0 .flex .items-center .justify-center
-                .transition-all .hover:border-indigo-400:
+              button .w-6 .h-6 .rounded-full .border-2 .border-gray-300 .dark:border-gray-600 .flex-shrink-0 .flex .items-center .justify-center .transition-all .hover:border-indigo-400:
                 "@click": "toggleTodo(todo.id)"
               p .flex-1 .text-sm .text-gray-700 .dark:text-gray-200: "{{ todo.text }}"
-              button .opacity-0 .group-hover:opacity-100 .text-red-400 .hover:text-red-600
-                .transition-all .text-xs .font-medium:
+              button .opacity-0 .group-hover:opacity-100 .text-red-400 .hover:text-red-600 .transition-all .text-xs .font-medium:
                 "@click": "removeTodo(todo.id)"
                 text: "Remove"
 

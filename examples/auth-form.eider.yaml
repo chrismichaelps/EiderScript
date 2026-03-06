@@ -34,74 +34,61 @@ components:
 
           # Logo + title
           div .text-center .mb-8:
-            div .w-14 .h-14 .rounded-2xl .bg-indigo-600 .mx-auto .mb-4
-              .flex .items-center .justify-center .shadow-lg:
+            div .w-14 .h-14 .rounded-2xl .bg-indigo-600 .mx-auto .mb-4 .flex .items-center .justify-center .shadow-lg:
               span .text-white .text-2xl .font-bold: "E"
             h1 .text-2xl .font-bold .text-gray-900 .dark:text-white: "Sign in"
             p .text-sm .text-gray-500 .dark:text-gray-400 .mt-1:
               "Welcome back — enter your credentials"
 
           # Card
-          div .bg-white .dark:bg-gray-900 .rounded-2xl .shadow-sm
-            .border .border-gray-200 .dark:border-gray-800 .p-6 .space-y-4:
+          div .bg-white .dark:bg-gray-900 .rounded-2xl .shadow-sm .border .border-gray-200 .dark:border-gray-800 .p-6 .space-y-4:
 
             # Error banner
-            div .bg-red-50 .dark:bg-red-900/20 .border .border-red-200 .dark:border-red-800
-              .rounded-lg .p-3 .text-sm .text-red-700 .dark:text-red-400:
-              v-if: error
-              text: "{{ error }}"
+            - div .bg-red-50 .dark:bg-red-900/20 .border .border-red-200 .dark:border-red-800 .rounded-lg .p-3 .text-sm .text-red-700 .dark:text-red-400:
+                v-if: error
+                text: "{{ error }}"
 
             # Email field
-            div:
-              label .block .text-sm .font-medium .text-gray-700 .dark:text-gray-300 .mb-1.5:
-                text: "Email"
-              div .relative:
-                input .w-full .rounded-lg .border .border-gray-300 .dark:border-gray-700
-                  .bg-white .dark:bg-gray-800 .text-gray-900 .dark:text-white
-                  .px-3 .py-2.5 .text-sm .outline-none
-                  .focus:ring-2 .focus:ring-indigo-500 .focus:border-transparent
-                  .peer-invalid:border-red-500 .transition-all:
-                  v-model: email
-                  attrs:
-                    type: email
-                    placeholder: you@example.com
-                    autocomplete: email
-              p .text-xs .text-red-500 .mt-1:
-                v-if: emailError
-                text: "Please enter a valid email address"
+            - div:
+                label .block .text-sm .font-medium .text-gray-700 .dark:text-gray-300 .mb-1.5:
+                  text: "Email"
+                div .relative:
+                  input .w-full .rounded-lg .border .border-gray-300 .dark:border-gray-700 .bg-white .dark:bg-gray-800 .text-gray-900 .dark:text-white .px-3 .py-2.5 .text-sm .outline-none .focus:ring-2 .focus:ring-indigo-500 .focus:border-transparent .peer-invalid:border-red-500 .transition-all:
+                    v-model: email
+                    attrs:
+                      type: email
+                      placeholder: you@example.com
+                      autocomplete: email
+                p .text-xs .text-red-500 .mt-1:
+                  v-if: emailError
+                  text: "Please enter a valid email address"
 
             # Password field
-            div:
-              label .block .text-sm .font-medium .text-gray-700 .dark:text-gray-300 .mb-1.5:
-                text: "Password"
-              div .relative:
-                input .w-full .rounded-lg .border .border-gray-300 .dark:border-gray-700
-                  .bg-white .dark:bg-gray-800 .text-gray-900 .dark:text-white
-                  .px-3 .py-2.5 .pr-10 .text-sm .outline-none
-                  .focus:ring-2 .focus:ring-indigo-500 .focus:border-transparent .transition-all:
-                  v-model: password
-                  attrs:
-                    placeholder: "Min 8 characters"
-                    autocomplete: current-password
+            - div:
+                label .block .text-sm .font-medium .text-gray-700 .dark:text-gray-300 .mb-1.5:
+                  text: "Password"
+                div .relative:
+                  input .w-full .rounded-lg .border .border-gray-300 .dark:border-gray-700 .bg-white .dark:bg-gray-800 .text-gray-900 .dark:text-white .px-3 .py-2.5 .pr-10 .text-sm .outline-none .focus:ring-2 .focus:ring-indigo-500 .focus:border-transparent .transition-all:
+                    v-model: password
+                    attrs:
+                      placeholder: "Min 8 characters"
+                      autocomplete: current-password
 
             # Submit
-            button .w-full .bg-indigo-600 .hover:bg-indigo-700 .dark:hover:bg-indigo-500
-              .disabled:opacity-50 .disabled:cursor-not-allowed
-              .text-white .font-semibold .py-2.5 .rounded-lg
-              .text-sm .transition-all .duration-150 .shadow-sm:
-              "@click": submit
-              text: "Sign in"
+            - button .w-full .bg-indigo-600 .hover:bg-indigo-700 .dark:hover:bg-indigo-500 .disabled:opacity-50 .disabled:cursor-not-allowed .text-white .font-semibold .py-2.5 .rounded-lg .text-sm .transition-all .duration-150 .shadow-sm:
+                "@click": submit
+                text: "Sign in"
 
             # Footer links
-            div .flex .items-center .justify-between .pt-2:
-              a .text-sm .text-indigo-600 .dark:text-indigo-400 .hover:underline:
-                attrs:
-                  href: /register
-                text: "Create account"
-              a .text-sm .text-gray-500 .hover:text-gray-700 .dark:text-gray-400 .hover:underline:
-                attrs:
-                  href: /forgot-password
-                text: "Forgot password?"
+            - div .flex .items-center .justify-between .pt-2:
+                a .text-sm .text-indigo-600 .dark:text-indigo-400 .hover:underline:
+                  attrs:
+                    href: /register
+                  text: "Create account"
+                a .text-sm .text-gray-500 .hover:text-gray-700 .dark:text-gray-400 .hover:underline:
+                  attrs:
+                    href: /forgot-password
+                  text: "Forgot password?"
 
   # Register Form
   - name: RegisterForm
@@ -125,54 +112,42 @@ components:
         div .w-full .max-w-sm:
           div .text-center .mb-8:
             h1 .text-2xl .font-bold .text-gray-900 .dark:text-white: "Create account"
-          div .bg-white .dark:bg-gray-900 .rounded-2xl .shadow-sm
-            .border .border-gray-200 .dark:border-gray-800 .p-6 .space-y-4:
-            div:
-              label .block .text-sm .font-medium .text-gray-700 .dark:text-gray-300 .mb-1.5:
-                text: "Full name"
-              input .w-full .rounded-lg .border .border-gray-300 .dark:border-gray-700
-                .bg-white .dark:bg-gray-800 .text-gray-900 .dark:text-white
-                .px-3 .py-2.5 .text-sm .outline-none .focus:ring-2 .focus:ring-indigo-500 .transition-all:
-                v-model: name
-                attrs:
-                  type: text
-                  placeholder: "Jane Doe"
-            div:
-              label .block .text-sm .font-medium .text-gray-700 .dark:text-gray-300 .mb-1.5:
-                text: "Email"
-              input .w-full .rounded-lg .border .border-gray-300 .dark:border-gray-700
-                .bg-white .dark:bg-gray-800 .text-sm .px-3 .py-2.5 .outline-none
-                .focus:ring-2 .focus:ring-indigo-500 .transition-all .text-gray-900 .dark:text-white:
-                v-model: email
-                attrs:
-                  type: email
-                  placeholder: you@example.com
-            div:
-              label .block .text-sm .font-medium .text-gray-700 .dark:text-gray-300 .mb-1.5:
-                text: "Password"
-              input .w-full .rounded-lg .border .border-gray-300 .dark:border-gray-700
-                .bg-white .dark:bg-gray-800 .text-sm .px-3 .py-2.5 .outline-none
-                .focus:ring-2 .focus:ring-indigo-500 .transition-all .text-gray-900 .dark:text-white:
-                v-model: password
-                attrs:
-                  type: password
-                  placeholder: "Min 8 characters"
-            div:
-              label .block .text-sm .font-medium .text-gray-700 .dark:text-gray-300 .mb-1.5:
-                text: "Confirm password"
-              input .w-full .rounded-lg .border .border-gray-300 .dark:border-gray-700
-                .bg-white .dark:bg-gray-800 .text-sm .px-3 .py-2.5 .outline-none
-                .focus:ring-2 .focus:ring-indigo-500 .transition-all .text-gray-900 .dark:text-white:
-                v-model: confirmPassword
-                attrs:
-                  type: password
-                  placeholder: "Repeat password"
-              p .text-xs .text-red-500 .mt-1:
-                v-if: confirmPassword.length > 0 and !passwordMatch
-                text: "Passwords do not match"
-            button .w-full .bg-indigo-600 .hover:bg-indigo-700
-              .disabled:opacity-50 .disabled:cursor-not-allowed
-              .text-white .font-semibold .py-2.5 .rounded-lg .text-sm
-              .transition-all .duration-150 .shadow-sm:
-              "@click": submit
-              text: "Create account"
+          div .bg-white .dark:bg-gray-900 .rounded-2xl .shadow-sm .border .border-gray-200 .dark:border-gray-800 .p-6 .space-y-4:
+            - div:
+                label .block .text-sm .font-medium .text-gray-700 .dark:text-gray-300 .mb-1.5:
+                  text: "Full name"
+                input .w-full .rounded-lg .border .border-gray-300 .dark:border-gray-700 .bg-white .dark:bg-gray-800 .text-gray-900 .dark:text-white .px-3 .py-2.5 .text-sm .outline-none .focus:ring-2 .focus:ring-indigo-500 .transition-all:
+                  v-model: name
+                  attrs:
+                    type: text
+                    placeholder: "Jane Doe"
+            - div:
+                label .block .text-sm .font-medium .text-gray-700 .dark:text-gray-300 .mb-1.5:
+                  text: "Email"
+                input .w-full .rounded-lg .border .border-gray-300 .dark:border-gray-700 .bg-white .dark:bg-gray-800 .text-sm .px-3 .py-2.5 .outline-none .focus:ring-2 .focus:ring-indigo-500 .transition-all .text-gray-900 .dark:text-white:
+                  v-model: email
+                  attrs:
+                    type: email
+                    placeholder: you@example.com
+            - div:
+                label .block .text-sm .font-medium .text-gray-700 .dark:text-gray-300 .mb-1.5:
+                  text: "Password"
+                input .w-full .rounded-lg .border .border-gray-300 .dark:border-gray-700 .bg-white .dark:bg-gray-800 .text-sm .px-3 .py-2.5 .outline-none .focus:ring-2 .focus:ring-indigo-500 .transition-all .text-gray-900 .dark:text-white:
+                  v-model: password
+                  attrs:
+                    type: password
+                    placeholder: "Min 8 characters"
+            - div:
+                label .block .text-sm .font-medium .text-gray-700 .dark:text-gray-300 .mb-1.5:
+                  text: "Confirm password"
+                input .w-full .rounded-lg .border .border-gray-300 .dark:border-gray-700 .bg-white .dark:bg-gray-800 .text-sm .px-3 .py-2.5 .outline-none .focus:ring-2 .focus:ring-indigo-500 .transition-all .text-gray-900 .dark:text-white:
+                  v-model: confirmPassword
+                  attrs:
+                    type: password
+                    placeholder: "Repeat password"
+                p .text-xs .text-red-500 .mt-1:
+                  v-if: confirmPassword.length > 0 and !passwordMatch
+                  text: "Passwords do not match"
+            - button .w-full .bg-indigo-600 .hover:bg-indigo-700 .disabled:opacity-50 .disabled:cursor-not-allowed .text-white .font-semibold .py-2.5 .rounded-lg .text-sm .transition-all .duration-150 .shadow-sm:
+                "@click": submit
+                text: "Create account"
