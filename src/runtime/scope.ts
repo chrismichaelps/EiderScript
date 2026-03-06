@@ -33,9 +33,9 @@ type ExprBindings = Parameters<ReturnType<typeof parser.parse>['evaluate']>[0]
  */
 function isPureJsSyntax(expr: string): boolean {
   const t = expr.trim()
-  if (/^\(?[^)]*\)?\s*=>/.test(t)) return true   // arrow literal
-  if (/^class\s/.test(t)) return true            // class declaration
-  if (/^function[\s(]/.test(t)) return true      // function decl/expr
+  if (/^(?:async\s+)?(?:\([^)]*\)|[a-zA-Z_$][\w$]*)\s*=>/.test(t)) return true
+  if (/^class\s/.test(t)) return true
+  if (/^function[\s(]/.test(t)) return true
   return false
 }
 
@@ -46,17 +46,6 @@ function sanitizeExpr(raw: string): string {
   return raw.replace(SMART_DOUBLE_RE, '"').replace(SMART_SINGLE_RE, "'")
 }
 
-/**
- * Rewrites `identifier.length` and `path.to.prop.length` →
- * `length(identifier)` / `length(path.to.prop)`.
- *
- * expr-eval treats `length` as a reserved token and rejects
- * `.length` property access. The registered `length()` function
- * handles arrays, strings, and objects.
- *
- * Does NOT match `.length` after non-word characters (e.g.
- * `).length` in method chains) — those go to the JS fallback.
- */
 const DOT_LENGTH_RE =
   /\b([a-zA-Z_$][\w$]*(?:\.[a-zA-Z_$][\w$]*)*)\.length\b/g
 
@@ -83,15 +72,20 @@ function splitLogicalOr(expr: string): string[] {
   return segments
 }
 
-/**
- * Transforms JS-like syntax into expr-eval equivalents:
- *   `obj.length`  →  `length(obj)`
- *   `&&`          →  `and`
- *   `||`          →  value-preserving ternary
- */
 function normalizeForExprEval(expr: string): string {
   let result = expr.replace(DOT_LENGTH_RE, 'length($1)')
+
+  // Strict equality/inequality → loose (expr-eval only supports == and !=)
+  result = result.replace(/!==/g, '!=')
+  result = result.replace(/===/g, '==')
+
+  // Logical AND
   result = result.replace(/&&/g, ' and ')
+
+  // Prefix logical NOT: convert ! to not
+  // (?<!\w) — not preceded by a word char (avoids factorial: n!)
+  // (?!=)   — not followed by = (preserves !=)
+  result = result.replace(/(?<!\w)!(?!=)/g, ' not ')
 
   const segments = splitLogicalOr(result)
   if (segments.length > 1) {
@@ -103,99 +97,77 @@ function normalizeForExprEval(expr: string): string {
   return result
 }
 
-const JS_RESERVED = new Set([
-  'true', 'false', 'null', 'undefined', 'NaN', 'Infinity',
-  'if', 'else', 'for', 'while', 'do', 'switch', 'case', 'break',
-  'continue', 'return', 'throw', 'try', 'catch', 'finally',
-  'new', 'delete', 'typeof', 'instanceof', 'in', 'of',
-  'var', 'let', 'const', 'function', 'class', 'extends',
-  'import', 'export', 'default', 'from', 'as',
-  'async', 'await', 'yield', 'this', 'super', 'void', 'with',
-  'and', 'or', 'not',
-])
+/**
+ * Blocks expressions that access dangerous globals or dynamic code
+ * execution primitives.  These must never reach `new Function()`.
+ */
+const DANGEROUS_JS_RE =
+  /\b(?:import|require)\s*\(|\beval\s*\(|\bFunction\s*\(|\bprocess\b|\bchild_process\b|\bglobalThis\s*\.|\bDeno\b/
 
-function extractIdentifiers(expr: string): string[] {
-  const ids = new Set<string>()
-  const re = /\b([a-zA-Z_$][\w$]*)\b/g
-  let match: RegExpExecArray | null
-  while ((match = re.exec(expr)) !== null) {
-    const id = match[1]!
-    if (!JS_RESERVED.has(id)) ids.add(id)
-  }
-  return [...ids]
+/**
+ * Detects JS assignment operators that expr-eval cannot handle.
+ *
+ * Matches a bare `=` that is NOT part of:
+ *   ==  !=  ===  !==  >=  <=  =>
+ *
+ * When an assignment is detected, expr-eval is skipped entirely
+ * and the expression goes straight to the JS fallback where
+ * `with(proxy) { x = expr }` can actually mutate the signal.
+ */
+const ASSIGNMENT_RE = /(?<![<>=!])=(?![=>])/
+
+function normalizeResult(value: unknown): unknown {
+  if (typeof value === 'number' && Number.isNaN(value)) return undefined
+  return value
 }
 
 /**
- * Arrow-callback method chains: `.filter(t => ...)`, `.map(x => ...)`
+ * Expected evaluation misses that should NOT produce console warnings.
  *
- * This is the ONE pattern class that:
- *   1. expr-eval fundamentally cannot parse (arrow syntax)
- *   2. Is commonly used in EiderScript templates
- *   3. Is safe to evaluate via Function constructor
- */
-const ARROW_CHAIN_RE = /\.\w+\s*\([^)]*=>/
-
-/** Patterns that cause unhandled async rejections in `new Function`. */
-const DANGEROUS_JS_RE = /\bimport\s*\(/
-
-/**
- * Evaluates expressions containing JS-only syntax (arrow callbacks,
- * method chains) using a parameterised Function constructor.
+ * - **SyntaxError**: The expression simply isn't parseable JS.
+ *   expr-eval already failed; there's nothing to log.
  *
- * Scope bindings are passed as explicit parameters — no `with()`,
- * no `eval()`.
+ * - **TypeError (property of undefined/null)**: Normal for
+ *   v-for iterator variables before the loop binds them (`todo.text`)
+ *   and nested paths on missing scope bindings (`order.customer.name`).
  */
+function isExpectedMiss(err: unknown): boolean {
+  if (err instanceof SyntaxError) return true
+  return (
+    err instanceof TypeError &&
+    /Cannot read properties of (undefined|null)/.test(err.message)
+  )
+}
+
 function jsFallbackEvaluate(
   expr: string,
   bindings: Record<string, unknown>,
 ): unknown {
-  const ids = extractIdentifiers(expr)
-  const paramNames: string[] = []
-  const paramValues: unknown[] = []
-
-  for (const id of ids) {
-    paramNames.push(id)
-    try {
-      paramValues.push(bindings[id])
-    } catch {
-      paramValues.push(undefined)
-    }
-  }
-
   try {
-    // eslint-disable-next-line @typescript-eslint/no-implied-eval
-    const fn = new Function(
-      ...paramNames,
-      `"use strict"; return (${expr})`,
-    )
-    const result: unknown = fn(...paramValues)
+    let fn: Function
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-implied-eval
+      fn = new Function('$$ctx', `with($$ctx) { return (${expr}) }`)
+    } catch {
+      // eslint-disable-next-line @typescript-eslint/no-implied-eval
+      fn = new Function('$$ctx', `with($$ctx) { ${expr} }`)
+    }
 
-    // Suppress async results — safeEvaluate is a synchronous API.
-    // Without this, a rejected Promise escapes the try/catch and
-    // becomes an unhandled rejection (e.g. ERR_VM_DYNAMIC_IMPORT).
+    const result: unknown = fn(bindings)
+
     if (result instanceof Promise) {
       result.catch(() => { })
       return undefined
     }
 
     return result
-  } catch {
+  } catch (err) {
+    if (!isExpectedMiss(err) && process.env.NODE_ENV !== 'production') {
+      console.warn(`[EiderScript] JS fallback evaluation failed: ${expr}`, err)
+    }
     return undefined
   }
 }
-
-/** 
-/*  expr-eval (sandboxed, no code generation)                 
-/*    Handles: arithmetic, comparisons, boolean logic, function
-/*    calls, simple property access, ternaries.                       
-/*    Throws on: undefined variables, arrow syntax, assignments.      
-/*                                                                    
-/*  JS fallback (Function constructor, explicit params)       
-/*    ONLY activated for arrow-callback method chains.                
-/*    Handles: .filter(x => ...), .map(x => ...), .reduce(...)        
-/*    Blocked for: import(), standalone assignments, all other         
-/*    patterns that don't need JS-specific syntax.    
-**/
 
 function safeEvaluate(
   expr: string,
@@ -205,23 +177,24 @@ function safeEvaluate(
   if (!sanitized.trim()) return undefined
   if (isPureJsSyntax(sanitized)) return undefined
 
-  // expr-eval — safe sandbox, no code generation
-  try {
-    return parser
-      .parse(normalizeForExprEval(sanitized))
-      .evaluate(bindings as ExprBindings)
-  } catch {
-    // expr-eval failed — undefined variable, parse error, or
-    // unsupported syntax. Check if JS fallback is appropriate.
+  // Assignments (x = expr, x += expr, …) MUST go through JS fallback.
+  // expr-eval treats `=` as `==`, so `x = !x` silently evaluates as a
+  // comparison returning a boolean — the signal is never mutated.
+  if (!ASSIGNMENT_RE.test(sanitized)) {
+    try {
+      const result = parser
+        .parse(normalizeForExprEval(sanitized))
+        .evaluate(bindings as ExprBindings)
+      return normalizeResult(result)
+    } catch {
+      // expr-eval failed — try JS fallback
+    }
   }
 
-  // JS fallback — only for arrow-callback method chains
-  if (ARROW_CHAIN_RE.test(sanitized) && !DANGEROUS_JS_RE.test(sanitized)) {
-    return jsFallbackEvaluate(sanitized, bindings)
+  if (!DANGEROUS_JS_RE.test(sanitized)) {
+    return normalizeResult(jsFallbackEvaluate(sanitized, bindings))
   }
 
-  // All other failures: unknown variable, assignment syntax,
-  // reserved-word collisions, etc. — return undefined.
   return undefined
 }
 
@@ -296,9 +269,94 @@ function buildProxy(tree: StateTree): Record<string, unknown> {
     },
 
     has(_, key) {
-      return typeof key === 'string' && isKnownKey(tree, key)
+      if (typeof key !== 'string') return false
+      if (key in globalThis) return false
+      return true
     },
   })
+}
+
+/**
+ * Extracts parameter names from a method body string.
+ */
+function extractMethodParams(
+  body: string,
+  tree: StateTree,
+): string[] {
+  const identRe = /\b([a-zA-Z_$][\w$]*)\b/g
+  const seen = new Set<string>()
+  const params: string[] = []
+
+  const reserved = new Set([
+    'if', 'else', 'return', 'const', 'let', 'var', 'true', 'false',
+    'null', 'undefined', 'new', 'this', 'typeof', 'instanceof',
+    'in', 'of', 'for', 'while', 'do', 'switch', 'case', 'break',
+    'continue', 'throw', 'try', 'catch', 'finally', 'delete', 'void',
+    'function', 'class', 'extends', 'super', 'import', 'export',
+    'default', 'async', 'await', 'yield', 'Date', 'Math', 'JSON',
+    'Array', 'Object', 'String', 'Number', 'Boolean', 'Map', 'Set',
+    'Promise', 'Error', 'console', 'parseInt', 'parseFloat',
+    'isNaN', 'isFinite', 'NaN', 'Infinity',
+  ])
+
+  let match: RegExpExecArray | null
+  while ((match = identRe.exec(body)) !== null) {
+    const name = match[1]!
+    if (seen.has(name)) continue
+    seen.add(name)
+
+    if (reserved.has(name)) continue
+    if (isKnownKey(tree, name)) continue
+
+    const arrowParamRe = new RegExp(
+      `(?:^|[,(])\\s*${name}\\s*(?=[,)=>])`,
+    )
+    if (arrowParamRe.test(body)) continue
+
+    params.push(name)
+  }
+
+  return params
+}
+
+/**
+ * Builds a method function that supports call-site arguments.
+ */
+function buildMethod(
+  body: string,
+  tree: StateTree,
+  proxy: Record<string, unknown>,
+): (...args: unknown[]) => unknown {
+  const paramNames = extractMethodParams(body, tree)
+
+  if (paramNames.length === 0) {
+    return () => safeEvaluate(body, proxy)
+  }
+
+  return (...args: unknown[]) => {
+    const overlay = Object.create(null) as Record<string, unknown>
+    for (let i = 0; i < paramNames.length; i++) {
+      overlay[paramNames[i]!] = args[i]
+    }
+
+    const layered = new Proxy(proxy, {
+      get(target, key) {
+        if (typeof key === 'string' && key in overlay) {
+          return overlay[key]
+        }
+        return Reflect.get(target, key)
+      },
+      set(target, key, value) {
+        return Reflect.set(target, key, value)
+      },
+      has(target, key) {
+        if (typeof key === 'string' && key in overlay) return true
+        return Reflect.has(target, key)
+      },
+    })
+
+    return safeEvaluate(body, layered as Record<string, unknown>)
+  }
 }
 
 export function createScope(
@@ -325,7 +383,7 @@ export function createScope(
   }
 
   for (const [key, expr] of Object.entries(methodDefs)) {
-    methods[key] = () => safeEvaluate(expr, proxy)
+    methods[key] = buildMethod(expr, tree, proxy)
   }
 
   return {
@@ -359,8 +417,10 @@ export function createRenderScope(
       }
       return undefined
     },
-    has(target, key) {
-      return typeof key === 'string' && key in target
+    has(_, key) {
+      if (typeof key !== 'string') return false
+      if (key in globalThis) return false
+      return true
     },
   })
 
@@ -389,7 +449,8 @@ export function createRenderScope(
           },
           has(_, key) {
             if (typeof key !== 'string') return false
-            return key in localProps || key in (ctx as object)
+            if (key in globalThis) return false
+            return true
           },
         },
       )

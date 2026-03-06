@@ -1,0 +1,151 @@
+# @EiderScript.Example.ComponentSync
+# 
+# Demonstrates v-model component synchronization in EiderScript.
+# The `v-model` directive implicitly binds a `value` prop and listens 
+# for an `input` event from the target component. Custom components 
+# using v-model should emit an `input` event structured as 
+# `{ target: { value: nextValue } }` to trigger the state update.
+
+name: ComponentSyncExample
+
+components:
+  # The Custom Input Component
+  CustomTextInput:
+    props:
+      value:
+        type: string
+        default: ''
+      label:
+        type: string
+        default: 'Enter Text'
+      placeholder:
+        type: string
+        default: 'Type here...'
+
+    emits:
+      - input
+      - focus
+      - blur
+
+    signals:
+      isFocused: false
+
+    methods:
+      # Emit the 'input' event with a standard DOM event structure
+      # expected by the `compileVModel` handler.
+      handleInput: |
+        emit('input', { target: { value: $event } })
+
+      handleFocus: |
+        isFocused = true
+        emit('focus')
+
+      handleBlur: |
+        isFocused = false
+        emit('blur')
+
+    template:
+      div:
+        class: "custom-input-wrapper"
+        attrs:
+          :class: "{ 'is-focused': isFocused, 'has-value': value.length > 0 }"
+        children:
+          - label:
+              class: "custom-label"
+              text: "{{ label }}"
+          - input:
+              type: "text"
+              class: "custom-input"
+              attrs:
+                # Bind the internal input to the injected `value` prop
+                :value: "value"
+                :placeholder: "placeholder"
+              # Capture raw DOM events and propagate through component boundary
+              "@input": "handleInput($event.target.value)"
+              "@focus": "handleFocus"
+              "@blur": "handleBlur"
+
+  # The Consumer Component (The "Parent")
+  UserProfileEditor:
+    signals:
+      username: 'eider_fan_99'
+      firstName: ''
+      lastName: ''
+      isEditing: false
+
+    computeds:
+      fullName: |
+        [firstName, lastName].filter(x => x).join(' ') || 'Anonymous User'
+
+    methods:
+      toggleEdit: |
+        isEditing = !isEditing
+      
+      saveProfile: |
+        isEditing = false
+        console.log('Profile saved:', fullName, username)
+
+    template:
+      div:
+        class: "profile-editor"
+        children:
+          - h2: "User Profile"
+          
+          # View Mode
+          - div:
+              v-if: "isEditing == false"
+              class: "profile-view"
+              children:
+                - p:
+                    strong: "Username: "
+                    text: "{{ username }}"
+                - p:
+                    strong: "Full Name: "
+                    text: "{{ fullName }}"
+                - button:
+                    "@click": "toggleEdit"
+                    text: "Edit Profile"
+          
+          # Edit Mode
+          - div:
+              v-else: true
+              class: "profile-edit-form"
+              children:
+                # Two-way data binding via v-model
+                - CustomTextInput:
+                    v-model: "username"
+                    attrs:
+                      label: "Username"
+                      placeholder: "Choose a new username"
+                
+                - CustomTextInput:
+                    v-model: "firstName"
+                    attrs:
+                      label: "First Name"
+                      placeholder: "Enter first name"
+                
+                - CustomTextInput:
+                    v-model: "lastName"
+                    attrs:
+                      label: "Last Name"
+                      placeholder: "Enter last name"
+                      
+                - div:
+                    class: "form-actions"
+                    children:
+                      - button:
+                          "@click": "toggleEdit"
+                          class: "btn-cancel"
+                          text: "Cancel"
+                      - button:
+                          "@click": "saveProfile"
+                          class: "btn-primary"
+                          text: "Save Changes"
+
+          # Debug panel to verify real-time sync
+          - div:
+              class: "debug-panel"
+              style: "margin-top: 2rem; padding: 1rem; background: #f0f0f0; border-radius: 4px;"
+              children:
+                - h4: "Live State"
+                - pre: "{{ {\n  username: username,\n  firstName: firstName,\n  lastName: lastName \n} | json }}"
