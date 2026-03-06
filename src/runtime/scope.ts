@@ -46,8 +46,7 @@ function sanitizeExpr(raw: string): string {
   return raw.replace(SMART_DOUBLE_RE, '"').replace(SMART_SINGLE_RE, "'")
 }
 
-const DOT_LENGTH_RE =
-  /\b([a-zA-Z_$][\w$]*(?:\.[a-zA-Z_$][\w$]*)*)\.length\b/g
+const DOT_LENGTH_RE = /\b([a-zA-Z_$][\w$]*(?:\.[a-zA-Z_$][\w$]*)*)\.length\b/g
 
 function splitLogicalOr(expr: string): string[] {
   const segments: string[] = []
@@ -156,7 +155,7 @@ function jsFallbackEvaluate(
     const result: unknown = fn(bindings)
 
     if (result instanceof Promise) {
-      result.catch(() => { })
+      result.catch(() => {})
       return undefined
     }
 
@@ -279,24 +278,70 @@ function buildProxy(tree: StateTree): Record<string, unknown> {
 /**
  * Extracts parameter names from a method body string.
  */
-function extractMethodParams(
-  body: string,
-  tree: StateTree,
-): string[] {
+function extractMethodParams(body: string, tree: StateTree): string[] {
   const identRe = /\b([a-zA-Z_$][\w$]*)\b/g
   const seen = new Set<string>()
   const params: string[] = []
 
   const reserved = new Set([
-    'if', 'else', 'return', 'const', 'let', 'var', 'true', 'false',
-    'null', 'undefined', 'new', 'this', 'typeof', 'instanceof',
-    'in', 'of', 'for', 'while', 'do', 'switch', 'case', 'break',
-    'continue', 'throw', 'try', 'catch', 'finally', 'delete', 'void',
-    'function', 'class', 'extends', 'super', 'import', 'export',
-    'default', 'async', 'await', 'yield', 'Date', 'Math', 'JSON',
-    'Array', 'Object', 'String', 'Number', 'Boolean', 'Map', 'Set',
-    'Promise', 'Error', 'console', 'parseInt', 'parseFloat',
-    'isNaN', 'isFinite', 'NaN', 'Infinity',
+    'if',
+    'else',
+    'return',
+    'const',
+    'let',
+    'var',
+    'true',
+    'false',
+    'null',
+    'undefined',
+    'new',
+    'this',
+    'typeof',
+    'instanceof',
+    'in',
+    'of',
+    'for',
+    'while',
+    'do',
+    'switch',
+    'case',
+    'break',
+    'continue',
+    'throw',
+    'try',
+    'catch',
+    'finally',
+    'delete',
+    'void',
+    'function',
+    'class',
+    'extends',
+    'super',
+    'import',
+    'export',
+    'default',
+    'async',
+    'await',
+    'yield',
+    'Date',
+    'Math',
+    'JSON',
+    'Array',
+    'Object',
+    'String',
+    'Number',
+    'Boolean',
+    'Map',
+    'Set',
+    'Promise',
+    'Error',
+    'console',
+    'parseInt',
+    'parseFloat',
+    'isNaN',
+    'isFinite',
+    'NaN',
+    'Infinity',
   ])
 
   let match: RegExpExecArray | null
@@ -308,9 +353,7 @@ function extractMethodParams(
     if (reserved.has(name)) continue
     if (isKnownKey(tree, name)) continue
 
-    const arrowParamRe = new RegExp(
-      `(?:^|[,(])\\s*${name}\\s*(?=[,)=>])`,
-    )
+    const arrowParamRe = new RegExp(`(?:^|[,(])\\s*${name}\\s*(?=[,)=>])`)
     if (arrowParamRe.test(body)) continue
 
     params.push(name)
@@ -320,42 +363,73 @@ function extractMethodParams(
 }
 
 /**
+ * Creates a layered proxy that merges call-site arguments with scope bindings.
+ */
+function createLayeredProxy(
+  proxy: Record<string, unknown>,
+  paramNames: string[],
+  args: unknown[],
+): Record<string, unknown> {
+  const overlay = Object.create(null) as Record<string, unknown>
+  for (let i = 0; i < paramNames.length; i++) {
+    overlay[paramNames[i]!] = args[i]
+  }
+
+  return new Proxy(proxy, {
+    get(target, key) {
+      if (typeof key === 'string' && key in overlay) {
+        return overlay[key]
+      }
+      return Reflect.get(target, key)
+    },
+    set(target, key, value) {
+      return Reflect.set(target, key, value)
+    },
+    has(target, key) {
+      if (typeof key === 'string' && key in overlay) return true
+      return Reflect.has(target, key)
+    },
+  })
+}
+
+/**
  * Builds a method function that supports call-site arguments.
  */
 function buildMethod(
   body: string,
   tree: StateTree,
   proxy: Record<string, unknown>,
+  forceAsync = false,
 ): (...args: unknown[]) => unknown {
   const paramNames = extractMethodParams(body, tree)
+  const hasAwait = forceAsync || /\bawait\b/.test(body)
+
+  const executeSync = (layered: Record<string, unknown>) =>
+    safeEvaluate(body, layered)
+
+  const executeAsync = (layered: Record<string, unknown>) => {
+    const fn = new Function(
+      ...paramNames,
+      `return (async () => { try { return await (${body}) } catch(e) { console.error('Async method error:', e); throw e } })()`,
+    )
+    return fn(...paramNames.map((p) => layered[p]))
+  }
 
   if (paramNames.length === 0) {
+    if (hasAwait) {
+      return () => {
+        const fn = new Function(
+          `return (async () => { try { return await (${body}) } catch(e) { console.error('Async method error:', e); throw e } })()`,
+        )
+        return fn()
+      }
+    }
     return () => safeEvaluate(body, proxy)
   }
 
   return (...args: unknown[]) => {
-    const overlay = Object.create(null) as Record<string, unknown>
-    for (let i = 0; i < paramNames.length; i++) {
-      overlay[paramNames[i]!] = args[i]
-    }
-
-    const layered = new Proxy(proxy, {
-      get(target, key) {
-        if (typeof key === 'string' && key in overlay) {
-          return overlay[key]
-        }
-        return Reflect.get(target, key)
-      },
-      set(target, key, value) {
-        return Reflect.set(target, key, value)
-      },
-      has(target, key) {
-        if (typeof key === 'string' && key in overlay) return true
-        return Reflect.has(target, key)
-      },
-    })
-
-    return safeEvaluate(body, layered as Record<string, unknown>)
+    const layered = createLayeredProxy(proxy, paramNames, args)
+    return hasAwait ? executeAsync(layered) : executeSync(layered)
   }
 }
 
@@ -363,7 +437,7 @@ export function createScope(
   props: Record<string, unknown>,
   signalDefs: Record<string, unknown> = {},
   computedDefs: Record<string, string | unknown> = {},
-  methodDefs: Record<string, string> = {},
+  methodDefs: Record<string, string | { body: string; async?: boolean }> = {},
   context: ScopeContext = {},
   interpolationPrefix = '{{',
 ): Scope {
@@ -383,7 +457,9 @@ export function createScope(
   }
 
   for (const [key, expr] of Object.entries(methodDefs)) {
-    methods[key] = buildMethod(expr, tree, proxy)
+    const isAsync = typeof expr === 'object' && expr.async === true
+    const body = typeof expr === 'string' ? expr : expr.body
+    methods[key] = buildMethod(body, tree, proxy, isAsync)
   }
 
   return {
@@ -434,26 +510,23 @@ export function createRenderScope(
       safeEvaluate(expr, guarded as Record<string, unknown>),
 
     createChild: (localProps: Record<string, unknown>) => {
-      const child = new Proxy(
-        Object.create(null) as Record<string, unknown>,
-        {
-          get(_, key) {
-            if (typeof key !== 'string') return undefined
-            if (key in localProps) return localProps[key]
-            try {
-              if (key in ctx) return (ctx as Record<string, unknown>)[key]
-            } catch {
-              // Guard: 'in' can throw on certain Vue internal proxies
-            }
-            return undefined
-          },
-          has(_, key) {
-            if (typeof key !== 'string') return false
-            if (key in globalThis) return false
-            return true
-          },
+      const child = new Proxy(Object.create(null) as Record<string, unknown>, {
+        get(_, key) {
+          if (typeof key !== 'string') return undefined
+          if (key in localProps) return localProps[key]
+          try {
+            if (key in ctx) return (ctx as Record<string, unknown>)[key]
+          } catch {
+            // Guard: 'in' can throw on certain Vue internal proxies
+          }
+          return undefined
         },
-      )
+        has(_, key) {
+          if (typeof key !== 'string') return false
+          if (key in globalThis) return false
+          return true
+        },
+      })
       return createRenderScope(child, interpolationPrefix)
     },
   }
