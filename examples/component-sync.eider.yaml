@@ -8,6 +8,12 @@
 
 name: ComponentSyncExample
 
+router:
+  routes:
+    - path: /
+      component: UserProfileEditor
+
+
 components:
   # The Custom Input Component
   CustomTextInput:
@@ -149,3 +155,4 @@ components:
               children:
                 - h4: "Live State"
                 - pre: "{{ {\n  username: username,\n  firstName: firstName,\n  lastName: lastName \n} | json }}"
+

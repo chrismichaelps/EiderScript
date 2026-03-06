@@ -71,8 +71,12 @@ components:
                   input .w-full .rounded-lg .border .border-gray-300 .dark:border-gray-700 .bg-white .dark:bg-gray-800 .text-gray-900 .dark:text-white .px-3 .py-2.5 .pr-10 .text-sm .outline-none .focus:ring-2 .focus:ring-indigo-500 .focus:border-transparent .transition-all:
                     v-model: password
                     attrs:
+                      type: password
                       placeholder: "Min 8 characters"
                       autocomplete: current-password
+                  button .absolute .right-3 .top-2.5 .text-gray-400 .hover:text-gray-600:
+                    "@click": togglePassword
+                    text: "{{ showPassword ? '🙈' : '👁️' }}"
 
             # Submit
             - button .w-full .bg-indigo-600 .hover:bg-indigo-700 .dark:hover:bg-indigo-500 .disabled:opacity-50 .disabled:cursor-not-allowed .text-white .font-semibold .py-2.5 .rounded-lg .text-sm .transition-all .duration-150 .shadow-sm:
@@ -124,7 +128,7 @@ components:
             - div:
                 label .block .text-sm .font-medium .text-gray-700 .dark:text-gray-300 .mb-1.5:
                   text: "Email"
-                input .w-full .rounded-lg .border .border-gray-300 .dark:border-gray-700 .bg-white .dark:bg-gray-800 .text-sm .px-3 .py-2.5 .outline-none .focus:ring-2 .focus:ring-indigo-500 .transition-all .text-gray-900 .dark:text-white:
+                input .w-full .rounded-lg .border .border-gray-300 .dark:border-gray-700 .bg-white .dark:bg-gray-800 .text-gray-900 .dark:text-white .px-3 .py-2.5 .text-sm .outline-none .focus:ring-2 .focus:ring-indigo-500 .transition-all:
                   v-model: email
                   attrs:
                     type: email
@@ -132,7 +136,7 @@ components:
             - div:
                 label .block .text-sm .font-medium .text-gray-700 .dark:text-gray-300 .mb-1.5:
                   text: "Password"
-                input .w-full .rounded-lg .border .border-gray-300 .dark:border-gray-700 .bg-white .dark:bg-gray-800 .text-sm .px-3 .py-2.5 .outline-none .focus:ring-2 .focus:ring-indigo-500 .transition-all .text-gray-900 .dark:text-white:
+                input .w-full .rounded-lg .border .border-gray-300 .dark:border-gray-700 .bg-white .dark:bg-gray-800 .text-gray-900 .dark:text-white .px-3 .py-2.5 .text-sm .outline-none .focus:ring-2 .focus:ring-indigo-500 .transition-all:
                   v-model: password
                   attrs:
                     type: password
@@ -140,7 +144,7 @@ components:
             - div:
                 label .block .text-sm .font-medium .text-gray-700 .dark:text-gray-300 .mb-1.5:
                   text: "Confirm password"
-                input .w-full .rounded-lg .border .border-gray-300 .dark:border-gray-700 .bg-white .dark:bg-gray-800 .text-sm .px-3 .py-2.5 .outline-none .focus:ring-2 .focus:ring-indigo-500 .transition-all .text-gray-900 .dark:text-white:
+                input .w-full .rounded-lg .border .border-gray-300 .dark:border-gray-700 .bg-white .dark:bg-gray-800 .text-gray-900 .dark:text-white .px-3 .py-2.5 .text-sm .outline-none .focus:ring-2 .focus:ring-indigo-500 .transition-all:
                   v-model: confirmPassword
                   attrs:
                     type: password
