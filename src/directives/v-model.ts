@@ -3,35 +3,60 @@ import type { Scope } from '../runtime/scope.js'
 
 export type InputType = 'text' | 'number' | 'checkbox' | 'radio' | string
 
-/** @EiderScript.Directives.VModel - Produces VNode props for two-way binding */
+/** @EiderScript.Directives.VModel - Produces VNode props for two-way binding (native inputs) */
 export function compileVModel(
   signalKey: string,
   scope: Scope,
   inputType: InputType = 'text',
 ): Record<string, unknown> {
   const signal = scope.signals[signalKey]
-  if (!signal) return {}
+  const canAssign = Boolean(signal || typeof scope.assign === 'function')
+  if (!canAssign) return {}
 
-  const value: unknown = signal.value
+  const getValue = (): unknown =>
+    signal ? signal.value : (scope.evaluate(signalKey) ?? '')
+  const setValue = (value: unknown): void => {
+    if (signal) {
+      (signal as { value: unknown }).value = value
+      return
+    }
+    if (typeof scope.assign === 'function') {
+      scope.assign(signalKey, value)
+    }
+  }
 
   const onInput = (e: Event): void => {
     const target = e.target as HTMLInputElement
-    const sig = scope.signals[signalKey]
-    if (!sig) return
-
     if (inputType === 'checkbox') {
-      sig.value = target.checked
+      setValue(target.checked)
     } else if (inputType === 'number') {
       const parsed = parseFloat(target.value)
-      sig.value = isNaN(parsed) ? 0 : parsed
+      setValue(isNaN(parsed) ? 0 : parsed)
     } else {
-      sig.value = target.value
+      setValue(target.value)
     }
   }
+
+  const value = getValue()
 
   if (inputType === 'checkbox') {
     return { checked: Boolean(value), onChange: onInput }
   }
 
   return { value: value ?? '', onInput }
+}
+
+/** Produces VNode props for component v-model (modelValue + onUpdate:modelValue) */
+export function compileVModelComponent(
+  signalKey: string,
+  scope: Scope,
+): Record<string, unknown> {
+  const value = scope.evaluate(signalKey)
+  if (typeof scope.assign !== 'function') {
+    return { modelValue: value ?? '' }
+  }
+  return {
+    modelValue: value ?? '',
+    'onUpdate:modelValue': (v: unknown) => scope.assign!(signalKey, v),
+  }
 }

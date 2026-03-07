@@ -10,6 +10,8 @@ export interface Scope {
   readonly props: Record<string, unknown>
   evaluate(expr: string): unknown
   createChild(localProps: Record<string, unknown>): Scope
+  /** Optional: assign a value to an expression (e.g. for v-model in render scope). */
+  assign?(expr: string, value: unknown): void
 }
 
 export interface ScopeContext {
@@ -155,7 +157,7 @@ function jsFallbackEvaluate(
     const result: unknown = fn(bindings)
 
     if (result instanceof Promise) {
-      result.catch(() => {})
+      result.catch(() => { })
       return undefined
     }
 
@@ -393,43 +395,68 @@ function createLayeredProxy(
 }
 
 /**
- * Builds a method function that supports call-site arguments.
+ * Builds a method function from a body string.
+ *
+ * Sync bodies route through safeEvaluate (expr-eval with JS with() fallback).
+ * Async bodies use with(proxy) directly as a statement block.
+ *
+ * The proxy's has() trap returns false for globalThis keys, so browser
+ * globals (fetch, console, Date, JSON, setTimeout) fall through to
+ * global scope — they're never shadowed.
+ *
+ * Only $event is injected as an overlay for call-site arguments.
+ * Local variables (const/let/var) inside the body create their own
+ * bindings and are NOT intercepted by the with() proxy.
  */
 function buildMethod(
   body: string,
-  tree: StateTree,
+  _tree: StateTree,
   proxy: Record<string, unknown>,
   forceAsync = false,
 ): (...args: unknown[]) => unknown {
-  const paramNames = extractMethodParams(body, tree)
   const hasAwait = forceAsync || /\bawait\b/.test(body)
 
-  const executeSync = (layered: Record<string, unknown>) =>
-    safeEvaluate(body, layered)
+  // Builds a proxy that adds $event without shadowing anything else.
+  const withEvent = (args: unknown[]): Record<string, unknown> =>
+    args.length > 0
+      ? createLayeredProxy(proxy, ['$event'], [args[0]])
+      : proxy
 
-  const executeAsync = (layered: Record<string, unknown>) => {
-    const fn = new Function(
-      ...paramNames,
-      `return (async () => { try { return await (${body}) } catch(e) { console.error('Async method error:', e); throw e } })()`,
-    )
-    return fn(...paramNames.map((p) => layered[p]))
+  if (!hasAwait) {
+    // Sync: expr-eval for simple expressions, JS with() fallback
+    // for multi-statement bodies (if/const/assignments).
+    return (...args: unknown[]) => safeEvaluate(body, withEvent(args))
   }
 
-  if (paramNames.length === 0) {
-    if (hasAwait) {
-      return () => {
-        const fn = new Function(
-          `return (async () => { try { return await (${body}) } catch(e) { console.error('Async method error:', e); throw e } })()`,
-        )
-        return fn()
-      }
-    }
-    return () => safeEvaluate(body, proxy)
-  }
-
+  // Async: full JS statement block inside with(proxy).
+  //
+  //   isLoading = true          triggers proxy set trap which sets signal.value = true
+  //   const response = await fetch(url) fetches from global, response is local const
+  //   users = data              triggers proxy set trap which sets signal.value = data
+  //
   return (...args: unknown[]) => {
-    const layered = createLayeredProxy(proxy, paramNames, args)
-    return hasAwait ? executeAsync(layered) : executeSync(layered)
+    const ctx = withEvent(args)
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-implied-eval
+      const fn = new Function(
+        '$$ctx',
+        `return (async () => { with($$ctx) { ${body} } })()`,
+      )
+      const result = fn(ctx)
+      if (result instanceof Promise) {
+        return result.catch((e: unknown) => {
+          if (process.env.NODE_ENV !== 'production') {
+            console.error('[EiderScript] Async method error:', e)
+          }
+        })
+      }
+      return result
+    } catch (e) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.error('[EiderScript] Method compile error:', e)
+      }
+      return Promise.resolve(undefined)
+    }
   }
 }
 
@@ -440,6 +467,8 @@ export function createScope(
   methodDefs: Record<string, string | { body: string; async?: boolean }> = {},
   context: ScopeContext = {},
   interpolationPrefix = '{{',
+  /** When provided (e.g. by createChild), evaluate uses this instead of the built proxy. */
+  customProxy?: Record<string, unknown>,
 ): Scope {
   const signals = buildSignals(signalDefs, interpolationPrefix)
 
@@ -448,6 +477,7 @@ export function createScope(
 
   const tree: StateTree = { props, signals, computeds, methods, context }
   const proxy = buildProxy(tree)
+  const effectiveProxy = customProxy ?? proxy
 
   for (const [key, expr] of Object.entries(computedDefs)) {
     computeds[key] =
@@ -468,17 +498,37 @@ export function createScope(
     methods,
     props,
 
-    evaluate: (expr: string) => safeEvaluate(expr, proxy),
+    evaluate: (expr: string) => safeEvaluate(expr, effectiveProxy),
 
-    createChild: (localProps: Record<string, unknown>) =>
-      createScope(
+    createChild: (localProps: Record<string, unknown>) => {
+      const parentProxy = effectiveProxy as Record<string, unknown>
+      const childProxy = new Proxy(Object.create(null) as Record<string, unknown>, {
+        get(_, key: string) {
+          if (key in localProps) return localProps[key]
+          return parentProxy[key]
+        },
+        set(_, key: string, value: unknown) {
+          if (key in localProps) {
+            localProps[key] = value
+            return true
+          }
+          parentProxy[key] = value
+          return true
+        },
+        has(_, key: string) {
+          return key in localProps || key in parentProxy
+        },
+      })
+      return createScope(
         { ...props, ...localProps },
         {},
         {},
         {},
         { ...context, inject: { ...(context.inject ?? {}), ...localProps } },
         interpolationPrefix,
-      ),
+        childProxy,
+      )
+    },
   }
 }
 
@@ -492,6 +542,14 @@ export function createRenderScope(
         return (target as Record<string, unknown>)[key]
       }
       return undefined
+    },
+    set(target, key, value) {
+      // Write through to Vue component proxy to trigger reactivity
+      if (typeof key === 'string') {
+        ; (target as Record<string, unknown>)[key] = value
+        return true
+      }
+      return false
     },
     has(_, key) {
       if (typeof key !== 'string') return false
@@ -509,6 +567,11 @@ export function createRenderScope(
     evaluate: (expr: string) =>
       safeEvaluate(expr, guarded as Record<string, unknown>),
 
+    assign: (expr: string, value: unknown) => {
+      const key = expr.trim().split(/\s*[.[\]]\s*/)[0]
+      if (key) (guarded as Record<string, unknown>)[key] = value
+    },
+
     createChild: (localProps: Record<string, unknown>) => {
       const child = new Proxy(Object.create(null) as Record<string, unknown>, {
         get(_, key) {
@@ -520,6 +583,16 @@ export function createRenderScope(
             // Guard: 'in' can throw on certain Vue internal proxies
           }
           return undefined
+        },
+        set(_, key, value) {
+          if (typeof key !== 'string') return false
+          // Delegate writes to component proxy to ensure reactive updates
+          try {
+            ; (ctx as Record<string, unknown>)[key] = value
+            return true
+          } catch {
+            return false
+          }
         },
         has(_, key) {
           if (typeof key !== 'string') return false

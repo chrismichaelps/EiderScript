@@ -11,7 +11,7 @@ export const Tags = {
 } as const
 
 export const Regex = {
-  DIRECTIVE: /^(v-if|v-for|v-model|@\w[\w.]*|:\w[\w-]*)$/,
+  DIRECTIVE: /^(v-if|v-else-if|v-else|v-for|v-model|v-show|v-bind|v-on|v-slot|v-once|v-pre|v-memo|v-cloak|v-text|v-html|@\w[\w.-]*|:\w[\w.-]*|#\w[\w.-]*)$/,
   INTERPOLATION: /\{\{\s*([^}]+)\s*\}\}/g,
 } as const
 

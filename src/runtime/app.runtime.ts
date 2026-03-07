@@ -1,5 +1,5 @@
 /** @EiderScript.Runtime.App - createEiderApp factory: compiles ASTs to Vue app instance */
-import { createApp, createSSRApp, type Plugin } from 'vue'
+import { createApp, createSSRApp, Fragment, type Plugin } from 'vue'
 import { createPinia } from 'pinia'
 import { Effect } from 'effect'
 import { parseYaml } from '../parser/yaml.parser.js'
@@ -27,6 +27,8 @@ export interface EiderAppInput {
   plugins?: Record<string, Plugin>
   /** Enable SSR mode (uses createSSRApp) */
   ssr?: boolean
+  /** Force router to use memory history (useful for embedded apps like playgrounds) */
+  memoryRouter?: boolean
 }
 
 /** @EiderScript.Runtime.App - Resolved live application handle */
@@ -48,8 +50,8 @@ export const createEiderApp = (
       dirFor: eiderConstants.dirFor,
       dirModel: eiderConstants.dirModel,
       defaultHtmlTag: eiderConstants.defaultHtmlTag,
-      fragmentHtmlTag: eiderConstants.fragmentHtmlTag,
-      directiveRe: new RegExp(`^(${eiderConstants.dirIf}|${eiderConstants.dirFor}|${eiderConstants.dirModel}|@\\w[\\w.]*|:\\w[\\w-]*)$`),
+      fragmentHtmlTag: Fragment as any,
+      directiveRe: new RegExp(`^(${eiderConstants.dirIf}|v-else-if|v-else|${eiderConstants.dirFor}|${eiderConstants.dirModel}|v-show|v-bind|v-on|v-slot|v-once|v-pre|v-memo|v-cloak|v-text|v-html|@\\w[\\w.-]*|:\\w[\\w.-]*|#\\w[\\w.-]*)$`),
     }
 
     const pinia = createPinia()
@@ -132,7 +134,7 @@ export const createEiderApp = (
       (compiledComponents[name] as RouteComponent | undefined) ??
       ({ template: `${eiderConstants.routerFallbackPrefix} ${name} ${eiderConstants.routerFallbackSuffix}` } satisfies RouteComponent)
 
-    const router = compileRouter(appAst, resolveComponent, input.ssr ?? false)
+    const router = compileRouter(appAst, resolveComponent, input.ssr ?? false, input.memoryRouter ?? false)
     if (router) vueApp.use(router)
 
     // Load external global plugins

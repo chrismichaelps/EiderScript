@@ -20,8 +20,6 @@ export { renderEider } from './ssr/render.js'
 export { hydrateEider } from './ssr/hydrate.js'
 export type { SSRResult } from './ssr/render.js'
 
-// Vite plugin
-export { eiderPlugin } from './vite-plugin/index.js'
 
 // Errors (for consumer error matching)
 export { ParseError, CompileError, RuntimeError, FetchError } from './effects/errors.js'

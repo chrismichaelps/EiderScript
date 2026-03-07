@@ -8,6 +8,7 @@ import {
   watch,
   provide,
   inject,
+  Fragment,
 } from 'vue'
 import { Effect } from 'effect'
 import type { ComponentAST } from '../schema/component.schema.js'
@@ -34,6 +35,8 @@ interface WatchDef {
 
 type EmitFn = (event: string, ...args: unknown[]) => void
 
+type MethodValue = string | { async?: boolean; body: string }
+
 function buildTemplateConfig(c: {
   readonly dirIf: string
   readonly dirFor: string
@@ -46,9 +49,9 @@ function buildTemplateConfig(c: {
     dirFor: c.dirFor,
     dirModel: c.dirModel,
     defaultHtmlTag: c.defaultHtmlTag,
-    fragmentHtmlTag: c.fragmentHtmlTag,
+    fragmentHtmlTag: Fragment as any,
     directiveRe: new RegExp(
-      `^(${c.dirIf}|${c.dirFor}|${c.dirModel}|@\\w[\\w.]*|:\\w[\\w-]*)$`,
+      `^(${c.dirIf}|v-else-if|v-else|${c.dirFor}|${c.dirModel}|v-show|v-bind|v-on|v-slot|v-once|v-pre|v-memo|v-cloak|v-text|v-html|@\\w[\\w.-]*|:\\w[\\w.-]*|#\\w[\\w.-]*)$`,
     ),
   }
 }
@@ -123,6 +126,23 @@ function registerProvisions(
   }
 }
 
+function normalizeMethods(
+  methods: Record<string, MethodValue> | undefined,
+): Record<string, MethodValue> {
+  if (!methods) return {}
+  const normalized: Record<string, MethodValue> = {}
+  for (const [key, value] of Object.entries(methods)) {
+    if (key.startsWith('async ')) {
+      const actualKey = key.slice(6)
+      const body = typeof value === 'string' ? value : value.body
+      normalized[actualKey] = { async: true, body }
+    } else {
+      normalized[key] = value
+    }
+  }
+  return normalized
+}
+
 const ASSIGNMENT_RE = /^([a-zA-Z_$][\w$]*)\s*=\s*(?!=)(.+)$/
 
 function executeBody(body: string, scope: Scope): unknown {
@@ -155,16 +175,6 @@ function executeBody(body: string, scope: Scope): unknown {
   return result
 }
 
-/**
- * Snapshots all scope bindings into a flat record for use as
- * individual `Function` parameters.
- *
- * This replaces the original `with(scope)` pattern:
- * - Works in strict mode
- * - Compatible with CSP environments (no `eval`)
- * - Makes `emit`, signals, computeds, methods, and props available
- *   as bare identifiers inside the generated function body
- */
 function collectScopeBindings(
   scope: Scope,
   emit: EmitFn | undefined,
@@ -188,17 +198,6 @@ function collectScopeBindings(
   return bindings
 }
 
-/**
- * Builds an async action executor.
- *
- * Async action bodies support full JavaScript syntax (`const`, `await`,
- * multi-arg function calls, control flow) — unlike sync actions which
- * route through expr-eval.
- *
- * Scope bindings are passed as individual Function parameters so that
- * `emit(...)`, signal reads, and method calls work as bare identifiers
- * without `with()`.
- */
 function buildAsyncExecutor(
   body: string,
   scope: Scope,
@@ -228,25 +227,6 @@ function buildAsyncExecutor(
 
     return Effect.runPromise(Effect.provide(effect, LiveServices))
   }
-}
-
-type MethodValue = string | { async?: boolean; body: string }
-
-function normalizeMethods(
-  methods: Record<string, MethodValue> | undefined,
-): Record<string, MethodValue> {
-  if (!methods) return {}
-  const normalized: Record<string, MethodValue> = {}
-  for (const [key, value] of Object.entries(methods)) {
-    if (key.startsWith('async ')) {
-      const actualKey = key.slice(6)
-      const body = typeof value === 'string' ? value : value.body
-      normalized[actualKey] = { async: true, body }
-    } else {
-      normalized[key] = value
-    }
-  }
-  return normalized
 }
 
 function buildActions(
@@ -293,11 +273,11 @@ function registerLifecycleHooks(ast: ComponentAST, scope: Scope): void {
   const hooks: ReadonlyArray<
     [expr: string | undefined, register: (cb: () => void) => void]
   > = [
-    [ast.onMounted, onMounted],
-    [ast.onUnmounted, onUnmounted],
-    [ast.onBeforeMount, onBeforeMount],
-    [ast.onUpdated, onUpdated],
-  ]
+      [ast.onMounted, onMounted],
+      [ast.onUnmounted, onUnmounted],
+      [ast.onBeforeMount, onBeforeMount],
+      [ast.onUpdated, onUpdated],
+    ]
 
   for (const [expr, register] of hooks) {
     if (expr) register(() => scope.evaluate(expr))
@@ -314,6 +294,46 @@ function buildSetupBindings(
     ...scope.methods,
     ...actions,
   }
+}
+
+/**
+ * Detects whether a render context carries real bindings.
+ *
+ * Uses the 'in' operator (triggers Proxy 'has' trap) instead of
+ * Object.keys() (triggers 'ownKeys' trap) to avoid Vue's SSR
+ * warning: "Avoid app logic that relies on enumerating keys on
+ * a component instance."
+ *
+ * Vue component proxies always expose $-prefixed internal properties.
+ * Plain objects from direct render() calls in tests won't have them.
+ */
+function hasRenderContext(ctx: unknown): ctx is Record<string, unknown> {
+  if (ctx == null || typeof ctx !== 'object') return false
+  const obj = ctx as Record<string | symbol, unknown>
+  return '$data' in obj || '$props' in obj || '$el' in obj
+}
+
+/**
+ * Builds a scope from AST defaults for standalone render calls.
+ *
+ * This covers the case where `render()` is invoked without a Vue
+ * component instance (unit tests, SSR pre-compilation). The scope
+ * uses the initial signal values, computed definitions, and method
+ * bodies from the AST so that directives like v-if evaluate
+ * correctly against default state.
+ */
+function buildFallbackScope(
+  ast: ComponentAST,
+  interpolationPrefix: string,
+): Scope {
+  return createScope(
+    {},
+    ast.signals ?? {},
+    ast.computeds ?? {},
+    normalizeMethods(ast.methods),
+    {},
+    interpolationPrefix,
+  )
 }
 
 export const compileComponent = (
@@ -335,6 +355,11 @@ export const compileComponent = (
       try: () => {
         const propsSchema = buildPropsSchema(ast.props)
 
+        // Fallback scope from AST defaults for standalone render calls.
+        const fallbackScope = ast.template != null
+          ? buildFallbackScope(ast, constants.interpolationPrefix)
+          : null
+
         const setup = (
           props: Record<string, unknown>,
           ctx?: { emit: EmitFn },
@@ -342,13 +367,11 @@ export const compileComponent = (
           const emit = ctx?.emit
           const injected = resolveInjections(ast.inject)
 
-          const normalizedMethods = normalizeMethods(ast.methods)
-
           const scope = createScope(
             props,
             ast.signals ?? {},
             ast.computeds ?? {},
-            normalizedMethods,
+            normalizeMethods(ast.methods),
             { emit, inject: injected },
             constants.interpolationPrefix,
           )
@@ -378,13 +401,14 @@ export const compileComponent = (
         ): ReturnType<typeof compileNode> {
           if (ast.template == null) return null
 
-          // Vue binds `this` to the component proxy, but provides `ctx` as first arg.
-          const renderCtx = this ?? ctx ?? {}
-          return compileNode(
-            ast.template,
-            createRenderScope(renderCtx, constants.interpolationPrefix),
-            tplConfig,
-          )
+          // Resolve render scope from proxy (this), setup context (ctx), or static fallback.
+          const scope = hasRenderContext(this)
+            ? createRenderScope(this, constants.interpolationPrefix)
+            : hasRenderContext(ctx)
+              ? createRenderScope(ctx, constants.interpolationPrefix)
+              : fallbackScope!
+
+          return compileNode(ast.template, scope, tplConfig)
         }
 
         return {

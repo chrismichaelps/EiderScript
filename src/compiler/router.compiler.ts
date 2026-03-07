@@ -29,13 +29,29 @@ export function compileRouter(
   ast: AppAST,
   resolveComponent: (name: string) => RouteComponent,
   ssr = false,
+  memoryHistory = false,
 ) {
   if (!ast.router) return null
 
   const routes = buildRoutes(ast.router.routes, resolveComponent)
 
+  // Inject a catch-all redirect to the first declared route if no root route exists
+  // to prevent Vue Router 'No match found' warnings with memory history.
+  if (memoryHistory && routes.length > 0) {
+    const hasRootPath = routes.some(r => r.path === '/');
+    if (!hasRootPath) {
+      const firstRealRoute = routes.find(r => r.path && !r.path.toString().includes(':catchAll'));
+      if (firstRealRoute) {
+        routes.push({
+          path: '/:pathMatch(.*)*',
+          redirect: firstRealRoute.path
+        });
+      }
+    }
+  }
+
   return createRouter({
-    history: ssr ? createMemoryHistory() : createWebHistory(),
+    history: ssr || memoryHistory ? createMemoryHistory() : createWebHistory(),
     routes,
   })
 }
