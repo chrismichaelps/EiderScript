@@ -14,50 +14,58 @@ components:
       doubleCount: count * 2
     methods:
       increment: count = count + 1
-      toggle: show = not show
+      toggle: show = !show
     template:
-      div .container:
-        h1 .title: Directive Showcase
+      div .min-h-screen .bg-slate-50 .dark:bg-slate-950 .py-12 .px-4:
+        div .max-w-2xl .mx-auto .bg-white .dark:bg-slate-900 .rounded-2xl .shadow-sm .border .border-slate-200 .dark:border-slate-800 .p-8 .space-y-8:
+          - h1 .text-3xl .font-bold .text-slate-900 .dark:text-white .mb-2: "Static Content & Directives"
+          - p .text-slate-500 .dark:text-slate-400 .mb-8: "Showcasing v-once, v-pre, v-memo, and other EiderScript directives."
 
-        section-1:
-          text: v-once - renders once
-          box-1:
-            class: box v-once
-            content-1:
-              text: Static {{ count }}
-            content-2:
-              text: Double {{ doubleCount }}
+          # Section 1: v-once
+          - div:
+              children:
+                - h2 .text-lg .font-semibold .text-slate-900 .dark:text-white .mb-3: "v-once (renders once)"
+                - div .bg-slate-100 .dark:bg-slate-800/50 .border .border-slate-200 .dark:border-slate-700 .rounded-xl .p-4:
+                    v-once: true
+                    children:
+                      - p .text-slate-700 .dark:text-slate-300: "Static Initial Count: {{ count }}"
+                      - p .text-slate-700 .dark:text-slate-300: "Static Initial Double: {{ doubleCount }}"
 
-        section-2:
-          text: v-pre - raw content
-          pre-box:
-            class: code v-pre
-            content:
-              text: "{{ raw interpolation }}"
+          # Section 2: v-pre
+          - div:
+              children:
+                - h2 .text-lg .font-semibold .text-slate-900 .dark:text-white .mb-3: "v-pre (raw content)"
+                - pre .bg-slate-900 .text-emerald-400 .p-4 .rounded-xl .text-sm:
+                    v-pre: true
+                    text: "{{ raw interpolation }} - ignored by compiler"
 
-        section-3:
-          text: v-memo - conditional render
-          actions:
-            button @click=increment: Inc
-          memo-box:
-            class: info v-memo=count
-            text: Count memo {{ count }}
+          # Section 3: v-memo
+          - div:
+              children:
+                - div .flex .items-center .justify-between .mb-3:
+                    children:
+                      - h2 .text-lg .font-semibold .text-slate-900 .dark:text-white: "v-memo (cached render)"
+                      - button .bg-slate-900 .hover:bg-slate-800 .dark:bg-slate-100 .dark:text-slate-900 .dark:hover:bg-white .text-white .px-4 .py-1.5 .rounded-lg .text-sm .font-medium:
+                          "@click": increment
+                          text: "Increment"
+                - div .bg-slate-50 .dark:bg-slate-800 .border .border-slate-200 .dark:border-slate-700 .rounded-xl .p-4:
+                    v-memo: count
+                    p .text-slate-700 .dark:text-slate-300: "Count (memoized): {{ count }}"
 
-        section-4:
-          text: v-cloak + v-show
-          panel:
-            class: panel v-cloak
-            visible:
-              text: Visible
-            hidden:
-              v-show: not(show)
-              text: Hidden
-
-        section-5:
-          text: Combined directives
-          actions:
-            button @click=toggle: Toggle
-          combined-box:
-            v-if: show
-            v-once: true
-            text: v-if + v-once
+          # Section 4: v-show
+          - div:
+              children:
+                - div .flex .items-center .justify-between .mb-3:
+                    children:
+                      - h2 .text-lg .font-semibold .text-slate-900 .dark:text-white: "v-show (conditional visibility)"
+                      - button .bg-slate-100 .dark:bg-slate-800 .text-slate-600 .dark:text-slate-300 .hover:bg-slate-200 .dark:hover:bg-slate-700 .px-4 .py-1.5 .rounded-lg .text-sm:
+                          "@click": toggle
+                          text: "Toggle"
+                - div .bg-slate-50 .dark:bg-slate-800 .border .border-slate-200 .dark:border-slate-700 .rounded-xl .p-4:
+                    children:
+                      - p .text-emerald-600 .font-medium:
+                          v-show: show
+                          text: "✓ This content is conditionally visible"
+                      - p .text-slate-400:
+                          v-show: "!show"
+                          text: "Content is hidden..."
