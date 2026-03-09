@@ -271,6 +271,7 @@ function buildProxy(tree: StateTree): Record<string, unknown> {
 
     has(_, key) {
       if (typeof key !== 'string') return false
+      if (isKnownKey(tree, key)) return true
       if (key in globalThis) return false
       return true
     },
@@ -551,8 +552,9 @@ export function createRenderScope(
       }
       return false
     },
-    has(_, key) {
+    has(target, key) {
       if (typeof key !== 'string') return false
+      if (key in target) return true
       if (key in globalThis) return false
       return true
     },
@@ -596,6 +598,12 @@ export function createRenderScope(
         },
         has(_, key) {
           if (typeof key !== 'string') return false
+          if (key in localProps) return true
+          try {
+            if (key in ctx) return true
+          } catch {
+            // ignore
+          }
           if (key in globalThis) return false
           return true
         },

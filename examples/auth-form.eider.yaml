@@ -8,150 +8,166 @@ router:
       component: RegisterForm
 
 components:
-  # Login Form 
   - name: LoginForm
     signals:
-      email: ""
-      password: ""
-      loading: false
-      error: ""
+      email: null
+      password: null
       showPassword: false
-
-    computeds:
-      isValid: email.length > 0 and password.length >= 8
-      emailError: email.length > 0 and !email.includes('@')
+      authenticated: false
 
     methods:
-      submit: |
-        if (!isValid) return;
-        loading = true;
-        error = "";
-      togglePassword: "showPassword = !showPassword"
+      signOut: |
+        authenticated = false;
+        email = null
+        password = null
 
     template:
-      div .min-h-screen .flex .items-center .justify-center .bg-gray-50 .dark:bg-gray-950 .px-4:
-        div .w-full .max-w-sm:
+      div .flex .min-h-screen .items-center .justify-center .px-4 .py-12 .bg-slate-50 .dark:bg-slate-950 .antialiased:
+        children:
+          - div .fixed .inset-0 .-z-10 .overflow-hidden .pointer-events-none:
+              children:
+                - div .absolute .-top-[10%] .-left-[10%] .h-[40%] .w-[40%] .rounded-full .bg-slate-200/40 .blur-[120px] .dark:bg-slate-800/20: ""
+                - div .absolute .-bottom-[10%] .-right-[10%] .h-[40%] .w-[40%] .rounded-full .bg-slate-200/40 .blur-[120px] .dark:bg-slate-800/20: ""
 
-          # Logo + title
-          div .text-center .mb-8:
-            div .w-14 .h-14 .rounded-2xl .bg-indigo-600 .mx-auto .mb-4 .flex .items-center .justify-center .shadow-lg:
-              span .text-white .text-2xl .font-bold: "E"
-            h1 .text-2xl .font-bold .text-gray-900 .dark:text-white: "Sign in"
-            p .text-sm .text-gray-500 .dark:text-gray-400 .mt-1:
-              "Welcome back — enter your credentials"
+          - div .w-full .max-w-[448px] .rounded-xl .border .border-slate-200 .bg-white .p-8 .shadow-sm .dark:border-slate-800 .dark:bg-slate-900:
+              children:
+                # ── Success ──
+                - div .w-full .flex .flex-col .items-center .py-8:
+                    v-if: authenticated
+                    children:
+                      - div .w-20 .h-20 .bg-emerald-100 .dark:bg-emerald-900/30 .rounded-full .flex .items-center .justify-center .mb-6 .animate-bounce:
+                          span .text-3xl: "🎉"
+                      - h1 .text-3xl .font-bold .text-slate-900 .dark:text-slate-100 .mb-2: "Welcome back!"
+                      - p .text-slate-500 .dark:text-slate-400 .text-center .mb-8: "You are now signed in."
+                      - button .w-full .rounded-lg .bg-slate-900 .px-4 .py-3 .text-sm .font-semibold .text-white .hover:bg-slate-800 .dark:bg-slate-100 .dark:text-slate-900 .cursor-pointer:
+                          "@click": signOut
+                          children:
+                            - span: "Sign out"
 
-          # Card
-          div .bg-white .dark:bg-gray-900 .rounded-2xl .shadow-sm .border .border-gray-200 .dark:border-gray-800 .p-6 .space-y-4:
+                # ── Form ──
+                - div:
+                    v-else: true
+                    children:
+                      - div .mb-8 .flex .flex-col .items-center .text-center:
+                          children:
+                            - div .mb-6 .flex .h-12 .w-12 .items-center .justify-center .rounded-lg .bg-slate-900 .dark:bg-white .text-white .dark:text-slate-900:
+                                img .w-6 .h-6 .dark:invert:
+                                  attrs:
+                                    src: "https://api.iconify.design/lucide:user.svg"
+                                    alt: "User"
+                            - h1 .text-2xl .font-semibold .tracking-tight .text-slate-900 .dark:text-slate-100: "Sign in"
+                            - p .mt-2 .text-sm .text-slate-600 .dark:text-slate-400: "Use your Workspace account to continue"
 
-            # Error banner
-            - div .bg-red-50 .dark:bg-red-900/20 .border .border-red-200 .dark:border-red-800 .rounded-lg .p-3 .text-sm .text-red-700 .dark:text-red-400:
-                v-if: error
-                text: "{{ error }}"
+                      - form .space-y-6:
+                          "@submit.prevent": "authenticated = true"
+                          children:
+                            # ── Email ──
+                            - div .space-y-2:
+                                children:
+                                  - label .block .text-sm .font-medium .text-slate-700 .dark:text-slate-300:
+                                      attrs:
+                                        for: "email"
+                                      text: "Email"
+                                  - input .block .w-full .appearance-none .rounded-lg .border .border-slate-300 .bg-white .px-4 .py-3 .text-sm .text-slate-900 .placeholder-slate-400 .outline-none .focus:border-slate-900 .focus:ring-2 .focus:ring-slate-900/10 .dark:border-slate-700 .dark:bg-slate-800 .dark:text-slate-100:
+                                      v-model: email
+                                      attrs:
+                                        id: "email"
+                                        type: "email"
+                                        required: true
+                                        placeholder: "Enter your email"
+                                        autocomplete: "email"
 
-            # Email field
-            - div:
-                label .block .text-sm .font-medium .text-gray-700 .dark:text-gray-300 .mb-1.5:
-                  text: "Email"
-                div .relative:
-                  input .w-full .rounded-lg .border .border-gray-300 .dark:border-gray-700 .bg-white .dark:bg-gray-800 .text-gray-900 .dark:text-white .px-3 .py-2.5 .text-sm .outline-none .focus:ring-2 .focus:ring-indigo-500 .focus:border-transparent .peer-invalid:border-red-500 .transition-all:
-                    v-model: email
-                    attrs:
-                      type: email
-                      placeholder: you@example.com
-                      autocomplete: email
-                p .text-xs .text-red-500 .mt-1:
-                  v-if: emailError
-                  text: "Please enter a valid email address"
+                            # ── Password ──
+                            - div .space-y-2:
+                                children:
+                                  - div .flex .items-center .justify-between:
+                                      children:
+                                        - label .block .text-sm .font-medium .text-slate-700 .dark:text-slate-300:
+                                            attrs:
+                                              for: "password"
+                                            text: "Password"
+                                        - a .text-xs .font-semibold .text-slate-900 .hover:underline .dark:text-slate-300:
+                                            attrs:
+                                              href: "#"
+                                            text: "Forgot password?"
+                                  - div .relative:
+                                      children:
+                                        - input .block .w-full .appearance-none .rounded-lg .border .border-slate-300 .bg-white .px-4 .py-3 .pr-12 .text-sm .text-slate-900 .placeholder-slate-400 .outline-none .focus:border-slate-900 .focus:ring-2 .focus:ring-slate-900/10 .dark:border-slate-700 .dark:bg-slate-800 .dark:text-slate-100:
+                                            v-model: password
+                                            attrs:
+                                              id: "password"
+                                              required: true
+                                              minlength: "8"
+                                              placeholder: "Enter your password"
+                                              autocomplete: "current-password"
+                                              :type: "showPassword ? 'text' : 'password'"
+                                        - button .absolute .right-3 .top-1/2 .-translate-y-1/2 .p-1 .text-slate-400 .hover:text-slate-900 .dark:hover:text-white .cursor-pointer .transition-colors:
+                                            "@click": "showPassword = !showPassword"
+                                            attrs:
+                                              type: "button"
+                                            children:
+                                              - img .w-5 .h-5 .opacity-60 .dark:invert:
+                                                  attrs:
+                                                    ":src": "showPassword ? 'https://api.iconify.design/lucide:eye-off.svg' : 'https://api.iconify.design/lucide:eye.svg'"
 
-            # Password field
-            - div:
-                label .block .text-sm .font-medium .text-gray-700 .dark:text-gray-300 .mb-1.5:
-                  text: "Password"
-                div .relative:
-                  input .w-full .rounded-lg .border .border-gray-300 .dark:border-gray-700 .bg-white .dark:bg-gray-800 .text-gray-900 .dark:text-white .px-3 .py-2.5 .pr-10 .text-sm .outline-none .focus:ring-2 .focus:ring-indigo-500 .focus:border-transparent .transition-all:
-                    v-model: password
-                    attrs:
-                      type: password
-                      placeholder: "Min 8 characters"
-                      autocomplete: current-password
-                  button .absolute .right-3 .top-2.5 .text-gray-400 .hover:text-gray-600:
-                    "@click": togglePassword
-                    text: "{{ showPassword ? '🙈' : '👁️' }}"
+                            # ── Stay signed in ──
+                            - div .flex .items-center:
+                                children:
+                                  - input .h-4 .w-4 .rounded .border-slate-300 .cursor-pointer:
+                                      attrs:
+                                        type: "checkbox"
+                                        id: "stay-signed"
+                                  - label .ml-2 .text-sm .text-slate-600 .dark:text-slate-400 .cursor-pointer:
+                                      attrs:
+                                        for: "stay-signed"
+                                      text: "Stay signed in"
 
-            # Submit
-            - button .w-full .bg-indigo-600 .hover:bg-indigo-700 .dark:hover:bg-indigo-500 .disabled:opacity-50 .disabled:cursor-not-allowed .text-white .font-semibold .py-2.5 .rounded-lg .text-sm .transition-all .duration-150 .shadow-sm:
-                "@click": submit
-                text: "Sign in"
+                            - button .w-full .rounded-lg .bg-slate-900 .px-4 .py-3 .text-sm .font-semibold .text-white .transition-all .hover:bg-slate-800 .active:scale-[0.98] .focus:outline-none .focus:ring-2 .focus:ring-slate-400 .focus:ring-offset-2 .dark:bg-slate-100 .dark:text-slate-900 .dark:hover:bg-white .cursor-pointer:
+                                attrs:
+                                  type: "submit"
+                                children:
+                                  - span: "Next"
 
-            # Footer links
-            - div .flex .items-center .justify-between .pt-2:
-                a .text-sm .text-indigo-600 .dark:text-indigo-400 .hover:underline:
-                  attrs:
-                    href: /register
-                  text: "Create account"
-                a .text-sm .text-gray-500 .hover:text-gray-700 .dark:text-gray-400 .hover:underline:
-                  attrs:
-                    href: /forgot-password
-                  text: "Forgot password?"
+                      # Divider
+                      - div .my-8 .flex .items-center:
+                          children:
+                            - div .flex-grow .border-t .border-slate-200 .dark:border-slate-800: ""
+                            - span .mx-4 .text-xs .font-medium .uppercase .tracking-wider .text-slate-400: "or"
+                            - div .flex-grow .border-t .border-slate-200 .dark:border-slate-800: ""
 
-  # Register Form
+                      # Google
+                      - button .flex .w-full .items-center .justify-center .gap-3 .rounded-lg .border .border-slate-300 .bg-white .px-4 .py-3 .text-sm .font-medium .text-slate-700 .transition-all .hover:bg-slate-50 .active:scale-[0.98] .dark:border-slate-700 .dark:bg-slate-800 .dark:text-slate-100 .dark:hover:bg-slate-700 .cursor-pointer:
+                          "@click": "authenticated = true"
+                          children:
+                            - img .h-5 .w-5:
+                                attrs:
+                                  src: "https://api.iconify.design/logos:google-icon.svg"
+                                  alt: "Google"
+                            - span: "Continue with Google"
+
+                      - div .mt-8 .text-center .text-sm .text-slate-600 .dark:text-slate-400:
+                          children:
+                            - p: "Not your computer? Use Guest mode to sign in privately."
+                            - div .mt-4 .flex .justify-center .gap-4:
+                                children:
+                                  - a .font-medium .text-slate-900 .hover:underline .dark:text-slate-300:
+                                      attrs:
+                                        href: "#"
+                                      text: "Create account"
+                                  - a .font-medium .text-slate-900 .hover:underline .dark:text-slate-300:
+                                      attrs:
+                                        href: "#"
+                                      text: "Help"
+
   - name: RegisterForm
     signals:
-      name: ""
       email: ""
-      password: ""
-      confirmPassword: ""
-      agreeTerms: false
-      loading: false
-
-    computeds:
-      passwordMatch: password == confirmPassword
-      isValid: name.length > 0 and email.length > 0 and password.length >= 8 and passwordMatch and agreeTerms
-
-    methods:
-      submit: "if (isValid) loading = true"
-
     template:
-      div .min-h-screen .flex .items-center .justify-center .bg-gray-50 .dark:bg-gray-950 .px-4:
-        div .w-full .max-w-sm:
-          div .text-center .mb-8:
-            h1 .text-2xl .font-bold .text-gray-900 .dark:text-white: "Create account"
-          div .bg-white .dark:bg-gray-900 .rounded-2xl .shadow-sm .border .border-gray-200 .dark:border-gray-800 .p-6 .space-y-4:
-            - div:
-                label .block .text-sm .font-medium .text-gray-700 .dark:text-gray-300 .mb-1.5:
-                  text: "Full name"
-                input .w-full .rounded-lg .border .border-gray-300 .dark:border-gray-700 .bg-white .dark:bg-gray-800 .text-gray-900 .dark:text-white .px-3 .py-2.5 .text-sm .outline-none .focus:ring-2 .focus:ring-indigo-500 .transition-all:
-                  v-model: name
-                  attrs:
-                    type: text
-                    placeholder: "Jane Doe"
-            - div:
-                label .block .text-sm .font-medium .text-gray-700 .dark:text-gray-300 .mb-1.5:
-                  text: "Email"
-                input .w-full .rounded-lg .border .border-gray-300 .dark:border-gray-700 .bg-white .dark:bg-gray-800 .text-gray-900 .dark:text-white .px-3 .py-2.5 .text-sm .outline-none .focus:ring-2 .focus:ring-indigo-500 .transition-all:
-                  v-model: email
-                  attrs:
-                    type: email
-                    placeholder: you@example.com
-            - div:
-                label .block .text-sm .font-medium .text-gray-700 .dark:text-gray-300 .mb-1.5:
-                  text: "Password"
-                input .w-full .rounded-lg .border .border-gray-300 .dark:border-gray-700 .bg-white .dark:bg-gray-800 .text-gray-900 .dark:text-white .px-3 .py-2.5 .text-sm .outline-none .focus:ring-2 .focus:ring-indigo-500 .transition-all:
-                  v-model: password
-                  attrs:
-                    type: password
-                    placeholder: "Min 8 characters"
-            - div:
-                label .block .text-sm .font-medium .text-gray-700 .dark:text-gray-300 .mb-1.5:
-                  text: "Confirm password"
-                input .w-full .rounded-lg .border .border-gray-300 .dark:border-gray-700 .bg-white .dark:bg-gray-800 .text-gray-900 .dark:text-white .px-3 .py-2.5 .text-sm .outline-none .focus:ring-2 .focus:ring-indigo-500 .transition-all:
-                  v-model: confirmPassword
-                  attrs:
-                    type: password
-                    placeholder: "Repeat password"
-                p .text-xs .text-red-500 .mt-1:
-                  v-if: confirmPassword.length > 0 and !passwordMatch
-                  text: "Passwords do not match"
-            - button .w-full .bg-indigo-600 .hover:bg-indigo-700 .disabled:opacity-50 .disabled:cursor-not-allowed .text-white .font-semibold .py-2.5 .rounded-lg .text-sm .transition-all .duration-150 .shadow-sm:
-                "@click": submit
-                text: "Create account"
+      div .min-h-screen .bg-slate-50 .dark:bg-slate-950 .flex .items-center .justify-center:
+        div .w-full .max-w-[448px] .bg-white .dark:bg-slate-900 .rounded-xl .border .border-slate-200 .dark:border-slate-800 .p-10:
+          children:
+            - h1 .text-2xl .font-semibold .mb-6: "Create account"
+            - a .text-indigo-600 .hover:underline:
+                attrs:
+                  href: "/login"
+                text: "Back to login"
