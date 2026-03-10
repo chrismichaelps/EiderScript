@@ -1,4 +1,4 @@
-/** @EiderScript.Compiler.Template - YAML template tree to Vue h() VNode tree */
+/** @EiderScript.Compiler.Template: YAML template tree to Vue h() VNode tree */
 import {
   h,
   getCurrentInstance,
@@ -114,11 +114,8 @@ function wrapWithModifiers(
 /**
  * Builds a DOM event handler from an expression string.
  *
- * Handles two patterns:
- *   - Bare method name: "addTodo" evaluates to a function, which is then called
- *   - Expression:       "setFilter('all')" evaluates and invokes it inline
- *
- * Uses scope.createChild to inject $event for the handler body.
+ * Handles bare method names and expressions by invoking them with a child scope
+ * that provides the $event object.
  */
 function buildEventHandler(
   expr: string,
@@ -154,7 +151,7 @@ function safeDynamicComponent(is: unknown): string | Component {
 /**
  * Resolves a tag name to a Component or string.
  *
- * Priority: built-in map to HTML tags to scope lookup to Vue runtime to raw string.
+ * Priority: built-in map, HTML tags, scope lookup, Vue runtime, then raw string.
  */
 function resolveTag(tag: string, scope: Scope): string | Component {
   const lower = tag.toLowerCase()
@@ -223,7 +220,15 @@ function parseTagKey(
   const events: Record<string, (e?: Event) => void> = {}
   const directives: Directives = {}
 
-  for (const part of parts.slice(1)) {
+  /**
+   * Use index-based loop (not for-of) so we can look-ahead to consume
+   * multi-token v-for expressions: `v-for=item in list`
+   * splits into ['v-for=item', 'in', 'list'] tokens, all of which
+   * belong to the v-for directive.
+   */
+  let partIdx = 1 // skip tag (parts[0])
+  while (partIdx < parts.length) {
+    const part = parts[partIdx]!
     if (part.startsWith('@')) {
       const [rawEvent, ...rest] = part.slice(1).split('=')
       const handlerExpr = rest.join('=')
@@ -231,7 +236,7 @@ function parseTagKey(
       events[name] = buildEventHandler(handlerExpr, scope, modifiers)
     } else if (part.startsWith(':')) {
       const eqIdx = part.indexOf('=')
-      if (eqIdx === -1) continue
+      if (eqIdx === -1) { partIdx++; continue }
       const propName = part.slice(1, eqIdx)
       const expr = part.slice(eqIdx + 1)
       Object.assign(attrs, propName
@@ -244,7 +249,17 @@ function parseTagKey(
     } else if (part === 'v-else') {
       directives.vElse = true
     } else if (part.startsWith(`${config.dirFor}=`)) {
-      directives.vFor = part.slice(config.dirFor.length + 1)
+      // v-for expressions span multiple tokens: 'v-for=item in list'
+      // resulting in tokens: ['v-for=item', 'in', 'list']
+      // with a full expression of: 'item in list'
+      // Consume the current token and then look ahead for 'in <list>'
+      const iterPart = part.slice(config.dirFor.length + 1) // e.g. 'item' or '(item,idx)'
+      let fullExpr = iterPart
+      if (parts[partIdx + 1] === 'in' && parts[partIdx + 2] !== undefined) {
+        fullExpr = `${iterPart} in ${parts[partIdx + 2]}`
+        partIdx += 2 // consume 'in' and '<list>'
+      }
+      directives.vFor = fullExpr
     } else if (part.startsWith(`${config.dirModel}=`)) {
       directives.vModel = part.slice(config.dirModel.length + 1)
     } else if (part.startsWith('v-show=')) {
@@ -288,6 +303,7 @@ function parseTagKey(
     } else {
       attrs[part] = true
     }
+    partIdx++
   }
 
   return { tag, attrs, events, directives }
@@ -609,7 +625,7 @@ function groupEntries(
     const vIfExpr = detectVIf(key, value, scope, config)
 
     if (vIfExpr !== undefined) {
-      const { branches, nextIndex } = collectIfChain(entries, i, vIfExpr, value, scope, config)
+      const { branches, nextIndex } = collectIfChain(entries, i, vIfExpr, key, value, scope, config)
       grouped.push({ kind: 'ifChain', branches })
       i = nextIndex
       continue
@@ -642,6 +658,10 @@ function detectVIf(
   if (key.includes(`${config.dirIf}=`)) {
     return parseTagKey(key, scope, config).directives.vIf
   }
+  // per-iteration scope to match Vue.js behaviour where v-for has higher priority than v-if.
+  if (key.split(/\s+/).some((t) => t.startsWith(`${config.dirFor}=`))) {
+    return undefined
+  }
   if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
     return (value as Record<string, unknown>)[config.dirIf] as string | undefined
   }
@@ -652,12 +672,44 @@ function collectIfChain(
   entries: [string, unknown][],
   startIndex: number,
   vIfExpr: string,
+  key: string,
   value: unknown,
   scope: Scope,
   config: TemplateCompilerConfig,
 ): { branches: VIfBranch[]; nextIndex: number } {
+  /**
+   * Strip conditional directives from a key string.
+   * Example: "div v-if=cond .class @click=fn" becomes "div .class @click=fn"
+   */
+  const stripKeyDirectives = (k: string): string =>
+    k.replace(/\s+(?:v-if|v-else-if|v-else)(?:=[^\s]*)?\b/g, '').trim()
+
+  /**
+   * Build the node to pass to compileNode for a branch.
+   * This wraps as { strippedKey: strippedValue } to preserve the element tag
+   * and removes matching conditional tokens from both the key and value dictionary.
+   */
+  const buildNode = (entryKey: string, entryValue: unknown): unknown => {
+    const cleanKey = stripKeyDirectives(entryKey)
+    const valueIsObj =
+      typeof entryValue === 'object' && entryValue !== null && !Array.isArray(entryValue)
+
+    let cleanValue = entryValue
+    if (valueIsObj) {
+      const stripped: Record<string, unknown> = {}
+      for (const [k, v] of Object.entries(entryValue as Record<string, unknown>)) {
+        if (k !== config.dirIf && k !== 'v-else-if' && k !== 'v-else') {
+          stripped[k] = v
+        }
+      }
+      cleanValue = stripped
+    }
+
+    return { [cleanKey]: cleanValue }
+  }
+
   const branches: VIfBranch[] = [
-    { directive: 'v-if', condition: vIfExpr, node: value },
+    { directive: 'v-if', condition: vIfExpr, node: buildNode(key, value) },
   ]
 
   let j = startIndex + 1
@@ -673,10 +725,10 @@ function collectIfChain(
       || extractValueDirective(nextValue, 'v-else') === ''
 
     if (elseIfExpr !== undefined) {
-      branches.push({ directive: 'v-else-if', condition: elseIfExpr, node: nextValue })
+      branches.push({ directive: 'v-else-if', condition: elseIfExpr, node: buildNode(nextKey, nextValue) })
       j++
     } else if (hasElse) {
-      branches.push({ directive: 'v-else', node: nextValue })
+      branches.push({ directive: 'v-else', node: buildNode(nextKey, nextValue) })
       j++
       break
     } else {
@@ -760,9 +812,23 @@ function compileSingleEntry(
 
   const { tag, attrs, events, directives } = parseTagKey(key, scope, config)
 
-  // Delegate v-for on tag key
+  // Delegate v-for on tag key.
+  // IMPORTANT: Pass { strippedKey: value } instead of just `value` so that each
+  // loop iteration's compileNode receives the full element entry and can
+  // resolve the tag name and other attributes. Passing the bare `value`
+  // would lose the tag and result in corrupted vnodes.
+  //
+  // Key stripping example: 'span v-for=item in items' becomes tokens ['span','v-for=item','in','items']
+  // A simple regex might leave 'in items' as garbage.
+  // Token-based filtering is used to skip the v-for token and the following 'in <list>' tokens.
   if (directives.vFor !== undefined) {
-    return compileVFor(directives.vFor, value, scope, config, compileNode)
+    const tokens = key.trim().split(/\s+/)
+    const vForIdx = tokens.findIndex((t) => t.startsWith(`${config.dirFor}=`))
+    const strippedTokens = vForIdx === -1
+      ? tokens
+      : tokens.filter((_, i) => i < vForIdx || i > vForIdx + 2)
+    const strippedKey = strippedTokens.join(' ').trim() || config.defaultHtmlTag
+    return compileVFor(directives.vFor, { [strippedKey]: value }, scope, config, compileNode)
   }
 
   // Extract event props from tag key
