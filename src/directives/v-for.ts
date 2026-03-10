@@ -1,10 +1,10 @@
-/** @EiderScript.Directives.VFor - v-for list rendering directive */
+/** @EiderScript.Directives.VFor: v-for list rendering directive */
 import { h } from 'vue'
 import type { VNode } from 'vue'
 import type { Scope } from '../runtime/scope.js'
 import type { TemplateCompilerConfig } from '../compiler/template.compiler.js'
 
-/** @EiderScript.Directives.VFor - Parse "item in list" or "(item, index) in list" */
+/** Parse "item in list" or "(item, index) in list" expressions */
 function parseVForExpr(expr: string): {
   itemVar: string
   indexVar: string | null
@@ -25,7 +25,7 @@ function parseVForExpr(expr: string): {
   return { itemVar: iterPart, indexVar: null, listExpr }
 }
 
-/** @EiderScript.Directives.VFor - Compiles v-for into a list of keyed VNodes */
+/** Compiles v-for into a list of keyed VNodes */
 export function compileVFor(
   expr: string,
   children: unknown,
@@ -56,8 +56,8 @@ export function compileVFor(
       const vnode = compileNode(children, iterScope, config)
       if (vnode === null) return [] as VNode[]
       if (typeof vnode === 'string') return [h('span', { key: idx }, vnode)] as VNode[]
-      // Clone with key
-      return [h(vnode.type as string, { ...vnode.props, key: idx })] as VNode[]
+      // Clone the node with a unique key to maintain state
+      return [h(vnode.type as string, { ...vnode.props, key: idx }, vnode.children ?? undefined)] as VNode[]
     } catch {
       return [] as VNode[]
     }
