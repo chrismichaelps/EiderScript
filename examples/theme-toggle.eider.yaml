@@ -6,120 +6,44 @@ router:
       component: ThemeShowcase
 
 components:
-  - name: ThemeToggle
-    signals:
-      dark: false
-    methods:
-      toggle: "dark = !dark"
-    template:
-      button .relative .inline-flex .items-center .w-14 .h-7
-        .rounded-full .transition-colors .duration-300 .cursor-pointer
-        .focus:outline-none .focus:ring-2 .focus:ring-offset-2 .focus:ring-indigo-500:
-        v-show: true
-        "@click": toggle
-        span .sr-only: "Toggle dark mode"
-        span .pointer-events-none .block .w-5 .h-5 .rounded-full .bg-white .shadow-lg
-          .ring-0 .transition-transform .duration-300: ""
-
   - name: ThemeShowcase
     signals:
       dark: false
-      fontSize: "base"
-      accent: "indigo"
-
-    computeds:
-      accentBg: "'bg-' + accent + '-600'"
-      accentText: "'text-' + accent + '-600'"
-
-    methods:
-      toggleDark: "dark = !dark"
-      setFontSize: "fontSize = value"
-      setAccent: "accent = value"
 
     template:
-      # Outer wrapper switches class on dark toggle
-      div .min-h-screen .transition-colors .duration-500
-        .bg-white .dark:bg-gray-950 .text-gray-900 .dark:text-white:
+      # Use dynamic class to control the root theme state
+      div:
+        class: "min-h-screen flex items-center justify-center p-6 antialiased transition-colors duration-500"
+        ":class": "dark ? 'dark bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'"
+        children:
+          # Central card with adaptive styling
+          - div:
+              class: "w-full max-w-md rounded-[3rem] p-16 shadow-2xl border transition-all duration-500 flex flex-col items-center text-center"
+              ":class": "dark ? 'bg-slate-900 border-slate-800 shadow-slate-950/40' : 'bg-white border-slate-100 shadow-slate-200/50'"
+              children:
+                - h1 .text-4xl .font-black .tracking-tighter .mb-4: "Appearance"
+                - p:
+                    class: "text-sm font-medium mb-12 transition-colors"
+                    ":class": "dark ? 'text-slate-400' : 'text-slate-500'"
+                    text: "Toggle the switch to change the workspace theme"
 
-        # Top bar
-        header .sticky .top-0 .z-50 .backdrop-blur-md
-          .bg-white/80 .dark:bg-gray-900/80 .border-b .border-gray-200 .dark:border-gray-800
-          .px-6 .py-4 .flex .items-center .justify-between:
-          h1 .text-lg .font-bold .tracking-tight: "EiderScript Theme Demo"
-          div .flex .items-center .gap-4:
-            # Accent palette
-            div .flex .gap-2:
-              button .w-5 .h-5 .rounded-full .bg-indigo-500 .ring-2 .ring-offset-2 .ring-indigo-500:
-                "@click": "setAccent('indigo')"
-              button .w-5 .h-5 .rounded-full .bg-rose-500 .ring-2 .ring-offset-2 .ring-rose-500:
-                "@click": "setAccent('rose')"
-              button .w-5 .h-5 .rounded-full .bg-emerald-500 .ring-2 .ring-offset-2 .ring-emerald-500:
-                "@click": "setAccent('emerald')"
-              button .w-5 .h-5 .rounded-full .bg-amber-500 .ring-2 .ring-offset-2 .ring-amber-500:
-                "@click": "setAccent('amber')"
-            # Dark toggle
-            button .relative .w-12 .h-6 .rounded-full .bg-gray-200 .dark:bg-indigo-600
-              .transition-colors .duration-300 .cursor-pointer:
-              "@click": toggleDark
+                # Functional toggle component
+                - div .relative .inline-block .w-11 .h-5:
+                    children:
+                      - input:
+                          attrs:
+                            id: theme-switch
+                            type: checkbox
+                            ":checked": dark
+                          class: "peer appearance-none w-11 h-5 bg-slate-100 dark:bg-slate-800 rounded-full checked:bg-slate-800 dark:checked:bg-slate-100 cursor-pointer transition-colors duration-300"
+                          "@change": "dark = $event.target.checked"
+                      - label:
+                          attrs:
+                            for: theme-switch
+                          class: "absolute top-0 left-0 w-5 h-5 bg-white rounded-full border border-slate-300 shadow-sm transition-transform duration-300 peer-checked:translate-x-6 peer-checked:border-slate-800 cursor-pointer"
 
-        main .max-w-5xl .mx-auto .px-6 .py-12 .space-y-10:
-
-          # Hero section (dark-mode aware)
-          section .text-center .space-y-4:
-            h2 .text-5xl .font-extrabold .tracking-tight
-              .text-gray-900 .dark:text-white: "Adaptive UI"
-            p .text-lg .text-gray-600 .dark:text-gray-300 .max-w-xl .mx-auto .leading-relaxed:
-              "Full Tailwind dark-mode, responsive breakpoints, and arbitrary values — all in YAML."
-            div .flex .gap-3 .justify-center .mt-6:
-              button .px-6 .py-3 .rounded-xl .text-white .font-semibold
-                .bg-indigo-600 .hover:bg-indigo-700 .dark:hover:bg-indigo-500
-                .shadow-md .shadow-indigo-500/25 .transition-all .duration-200:
-                text: "Get started →"
-              button .px-6 .py-3 .rounded-xl .font-semibold
-                .bg-gray-100 .hover:bg-gray-200 .dark:bg-gray-800 .dark:hover:bg-gray-700
-                .text-gray-700 .dark:text-gray-200 .transition-all .duration-200:
-                text: "Learn more"
-
-          # Feature grid
-          section .grid .grid-cols-1 .sm:grid-cols-2 .lg:grid-cols-3 .gap-6:
-            div .bg-gray-50 .dark:bg-gray-900 .border .border-gray-200 .dark:border-gray-800
-              .rounded-2xl .p-6 .group .hover:border-indigo-300 .dark:hover:border-indigo-700
-              .transition-all .duration-200:
-              div .w-10 .h-10 .rounded-xl .bg-indigo-100 .dark:bg-indigo-900/40 .flex .items-center .justify-center .mb-4:
-                span .text-indigo-600 .dark:text-indigo-400 .text-xl: "⚡"
-              h3 .font-semibold .text-gray-900 .dark:text-white .mb-2: "Fast by default"
-              p .text-sm .text-gray-600 .dark:text-gray-400 .leading-relaxed:
-                "Compiled YAML templates run at native Vue 3 VNode speed."
-
-            div .bg-gray-50 .dark:bg-gray-900 .border .border-gray-200 .dark:border-gray-800
-              .rounded-2xl .p-6 .group .hover:border-indigo-300 .dark:hover:border-indigo-700
-              .transition-all .duration-200:
-              div .w-10 .h-10 .rounded-xl .bg-emerald-100 .dark:bg-emerald-900/40 .flex .items-center .justify-center .mb-4:
-                span .text-emerald-600 .dark:text-emerald-400 .text-xl: "🎨"
-              h3 .font-semibold .text-gray-900 .dark:text-white .mb-2: "Tailwind native"
-              p .text-sm .text-gray-600 .dark:text-gray-400 .leading-relaxed:
-                "All classes — stacked variants, group-hover, arbitrary values — just work."
-
-            div .bg-gray-50 .dark:bg-gray-900 .border .border-gray-200 .dark:border-gray-800
-              .rounded-2xl .p-6 .group .hover:border-indigo-300 .dark:hover:border-indigo-700
-              .transition-all .duration-200:
-              div .w-10 .h-10 .rounded-xl .bg-rose-100 .dark:bg-rose-900/40 .flex .items-center .justify-center .mb-4:
-                span .text-rose-600 .dark:text-rose-400 .text-xl: "🛡️"
-              h3 .font-semibold .text-gray-900 .dark:text-white .mb-2: "Effect-safe"
-              p .text-sm .text-gray-600 .dark:text-gray-400 .leading-relaxed:
-                "Runtime config via Effect.Config. No magic strings."
-
-          # Color scale showcase
-          section:
-            h3 .text-lg .font-semibold .mb-4 .text-gray-700 .dark:text-gray-300: "Color scale"
-            div .grid .grid-cols-5 .sm:grid-cols-10 .gap-2:
-              div .h-12 .rounded-lg .bg-indigo-50: ""
-              div .h-12 .rounded-lg .bg-indigo-100: ""
-              div .h-12 .rounded-lg .bg-indigo-200: ""
-              div .h-12 .rounded-lg .bg-indigo-300: ""
-              div .h-12 .rounded-lg .bg-indigo-400: ""
-              div .h-12 .rounded-lg .bg-indigo-500: ""
-              div .h-12 .rounded-lg .bg-indigo-600: ""
-              div .h-12 .rounded-lg .bg-indigo-700: ""
-              div .h-12 .rounded-lg .bg-indigo-800: ""
-              div .h-12 .rounded-lg .bg-indigo-900: ""
+                # Text indicator
+                - div:
+                    class: "mt-12 px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all"
+                    ":class": "dark ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'"
+                    text: "{{ dark ? 'Dark Mode' : 'Light Mode' }}"
