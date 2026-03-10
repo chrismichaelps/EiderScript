@@ -1,4 +1,4 @@
-/** @EiderScript.Runtime.Scope — Reactive evaluation scope for expr-eval expressions */
+/** @EiderScript.Runtime.Scope: Reactive evaluation scope for expr-eval expressions */
 import { computed, ref, unref } from 'vue'
 import type { Ref, ComputedRef } from 'vue'
 import { Parser } from 'expr-eval'
@@ -84,8 +84,8 @@ function normalizeForExprEval(expr: string): string {
   result = result.replace(/&&/g, ' and ')
 
   // Prefix logical NOT: convert ! to not
-  // (?<!\w) — not preceded by a word char (avoids factorial: n!)
-  // (?!=)   — not followed by = (preserves !=)
+  // (?<!\w): not preceded by a word char (avoids factorial: n!)
+  // (?!=):   not followed by = (preserves !=)
   result = result.replace(/(?<!\w)!(?!=)/g, ' not ')
 
   const segments = splitLogicalOr(result)
@@ -123,14 +123,10 @@ function normalizeResult(value: unknown): unknown {
 }
 
 /**
- * Expected evaluation misses that should NOT produce console warnings.
- *
- * - **SyntaxError**: The expression simply isn't parseable JS.
- *   expr-eval already failed; there's nothing to log.
- *
- * - **TypeError (property of undefined/null)**: Normal for
- *   v-for iterator variables before the loop binds them (`todo.text`)
- *   and nested paths on missing scope bindings (`order.customer.name`).
+ * Expected evaluation misses that should not produce console warnings.
+ * This includes syntax errors where the expression is not parseable, and 
+ * type errors for missing properties on undefined/null values which are 
+ * common during loop initialization.
  */
 function isExpectedMiss(err: unknown): boolean {
   if (err instanceof SyntaxError) return true
@@ -180,7 +176,7 @@ function safeEvaluate(
 
   // Assignments (x = expr, x += expr, …) MUST go through JS fallback.
   // expr-eval treats `=` as `==`, so `x = !x` silently evaluates as a
-  // comparison returning a boolean — the signal is never mutated.
+  // comparison returning a boolean: the signal is never mutated.
   if (!ASSIGNMENT_RE.test(sanitized)) {
     try {
       const result = parser
@@ -188,7 +184,7 @@ function safeEvaluate(
         .evaluate(bindings as ExprBindings)
       return normalizeResult(result)
     } catch {
-      // expr-eval failed — try JS fallback
+      // expr-eval failed: try JS fallback
     }
   }
 
@@ -280,6 +276,10 @@ function buildProxy(tree: StateTree): Record<string, unknown> {
 
 /**
  * Extracts parameter names from a method body string.
+ *
+ * An identifier is considered a "parameter" (a value to inject from call arguments)
+ * when it is not a JS reserved word, not a known scope key, and does not appear 
+ * as a property access. Property members and arrow function parameters are also ignored.
  */
 function extractMethodParams(body: string, tree: StateTree): string[] {
   const identRe = /\b([a-zA-Z_$][\w$]*)\b/g
@@ -287,75 +287,51 @@ function extractMethodParams(body: string, tree: StateTree): string[] {
   const params: string[] = []
 
   const reserved = new Set([
-    'if',
-    'else',
-    'return',
-    'const',
-    'let',
-    'var',
-    'true',
-    'false',
-    'null',
-    'undefined',
-    'new',
-    'this',
-    'typeof',
-    'instanceof',
-    'in',
-    'of',
-    'for',
-    'while',
-    'do',
-    'switch',
-    'case',
-    'break',
-    'continue',
-    'throw',
-    'try',
-    'catch',
-    'finally',
-    'delete',
-    'void',
-    'function',
-    'class',
-    'extends',
-    'super',
-    'import',
-    'export',
-    'default',
-    'async',
-    'await',
-    'yield',
-    'Date',
-    'Math',
-    'JSON',
-    'Array',
-    'Object',
-    'String',
-    'Number',
-    'Boolean',
-    'Map',
-    'Set',
-    'Promise',
-    'Error',
-    'console',
-    'parseInt',
-    'parseFloat',
-    'isNaN',
-    'isFinite',
-    'NaN',
-    'Infinity',
+    // JS keywords
+    'if', 'else', 'return', 'const', 'let', 'var', 'true', 'false',
+    'null', 'undefined', 'new', 'this', 'typeof', 'instanceof', 'in',
+    'of', 'for', 'while', 'do', 'switch', 'case', 'break', 'continue',
+    'throw', 'try', 'catch', 'finally', 'delete', 'void', 'function',
+    'class', 'extends', 'super', 'import', 'export', 'default',
+    'async', 'await', 'yield',
+    // Global constructors and utilities
+    'Date', 'Math', 'JSON', 'Array', 'Object', 'String', 'Number',
+    'Boolean', 'Map', 'Set', 'Promise', 'Error', 'RegExp', 'Symbol',
+    'console', 'parseInt', 'parseFloat', 'isNaN', 'isFinite', 'NaN',
+    'Infinity', 'globalThis', 'window', 'document', 'fetch',
+    'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval',
+    // Common Array prototype methods (appear as `arr.method(...)`)
+    'map', 'filter', 'find', 'findIndex', 'forEach', 'reduce', 'reduceRight',
+    'some', 'every', 'flat', 'flatMap', 'includes', 'indexOf', 'lastIndexOf',
+    'push', 'pop', 'shift', 'unshift', 'splice', 'slice', 'join', 'reverse',
+    'sort', 'fill', 'copyWithin', 'entries', 'keys', 'values', 'concat',
+    // Common Object prototype methods
+    'assign', 'create', 'keys', 'values', 'entries', 'fromEntries',
+    'hasOwnProperty', 'toString', 'valueOf', 'freeze', 'seal',
+    // Common String methods
+    'trim', 'split', 'replace', 'match', 'search', 'startsWith', 'endsWith',
+    'includes', 'substring', 'slice', 'toUpperCase', 'toLowerCase', 'charAt',
   ])
 
   let match: RegExpExecArray | null
   while ((match = identRe.exec(body)) !== null) {
     const name = match[1]!
+    const matchStart = match.index!
+
     if (seen.has(name)) continue
+
+    if (reserved.has(name)) { seen.add(name); continue }
+    if (isKnownKey(tree, name)) { seen.add(name); continue }
+
+    // Skip property accesses: the char before the identifier is '.'
+    // IMPORTANT: do NOT add to `seen` here because the same identifier may
+    // appear later as a standalone param (for example `t.id === id`).
+    if (matchStart > 0 && body[matchStart - 1] === '.') continue
+
+    // Add to seen now (after the dot-check) so future occurrences are skipped
     seen.add(name)
 
-    if (reserved.has(name)) continue
-    if (isKnownKey(tree, name)) continue
-
+    // Skip arrow function parameters
     const arrowParamRe = new RegExp(`(?:^|[,(])\\s*${name}\\s*(?=[,)=>])`)
     if (arrowParamRe.test(body)) continue
 
@@ -403,30 +379,45 @@ function createLayeredProxy(
  *
  * The proxy's has() trap returns false for globalThis keys, so browser
  * globals (fetch, console, Date, JSON, setTimeout) fall through to
- * global scope — they're never shadowed.
+ * global scope directly, so they are never shadowed.
  *
- * Only $event is injected as an overlay for call-site arguments.
- * Local variables (const/let/var) inside the body create their own
- * bindings and are NOT intercepted by the with() proxy.
+ * Named parameters (e.g. `value` in `statusFilter = value`, or `id` in
+ * `todos = todos.filter(t => t.id !== id)`) are detected via
+ * `extractMethodParams` and bound positionally from call-site args.
+ * `$event` is always bound as args[0] for DOM event handlers.
  */
 function buildMethod(
   body: string,
-  _tree: StateTree,
+  tree: StateTree,
   proxy: Record<string, unknown>,
   forceAsync = false,
 ): (...args: unknown[]) => unknown {
   const hasAwait = forceAsync || /\bawait\b/.test(body)
 
-  // Builds a proxy that adds $event without shadowing anything else.
-  const withEvent = (args: unknown[]): Record<string, unknown> =>
-    args.length > 0
-      ? createLayeredProxy(proxy, ['$event'], [args[0]])
-      : proxy
+  // Detect named parameters in the body that are NOT in scope
+  const paramNames = extractMethodParams(body, tree)
+
+  /**
+   * Builds a layered proxy to merge named positional parameters and
+   * the $event object with the outer scope proxy.
+   */
+  const withArgs = (args: unknown[]): Record<string, unknown> => {
+    const overlays: Record<string, unknown> = {}
+    // Bind named params positionally
+    for (let i = 0; i < paramNames.length; i++) {
+      overlays[paramNames[i]!] = args[i]
+    }
+    // Always bind $event too (for DOM event handlers)
+    if (args.length > 0) overlays['$event'] = args[0]
+
+    if (Object.keys(overlays).length === 0) return proxy
+    return createLayeredProxy(proxy, Object.keys(overlays), Object.values(overlays))
+  }
 
   if (!hasAwait) {
     // Sync: expr-eval for simple expressions, JS with() fallback
     // for multi-statement bodies (if/const/assignments).
-    return (...args: unknown[]) => safeEvaluate(body, withEvent(args))
+    return (...args: unknown[]) => safeEvaluate(body, withArgs(args))
   }
 
   // Async: full JS statement block inside with(proxy).
@@ -436,7 +427,7 @@ function buildMethod(
   //   users = data              triggers proxy set trap which sets signal.value = data
   //
   return (...args: unknown[]) => {
-    const ctx = withEvent(args)
+    const ctx = withArgs(args)
     try {
       // eslint-disable-next-line @typescript-eslint/no-implied-eval
       const fn = new Function(
