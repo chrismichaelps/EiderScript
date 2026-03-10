@@ -1,10 +1,6 @@
-# @EiderScript.Example.ComponentSync
-# 
-# Demonstrates v-model component synchronization in EiderScript.
-# The `v-model` directive implicitly binds a `value` prop and listens 
-# for an `input` event from the target component. Custom components 
-# using v-model should emit an `input` event structured as 
-# `{ target: { value: nextValue } }` to trigger the state update.
+# Component synchronization with v-model. 
+# Custom components using v-model should declare a modelValue prop and 
+# emit update:modelValue with the new value.
 
 name: ComponentSyncExample
 
@@ -15,10 +11,10 @@ router:
 
 
 components:
-  # The Custom Input Component
+  # Reusable text input component
   CustomTextInput:
     props:
-      value:
+      modelValue:
         type: string
         default: ''
       label:
@@ -29,7 +25,7 @@ components:
         default: 'Type here...'
 
     emits:
-      - input
+      - "update:modelValue"
       - focus
       - blur
 
@@ -37,10 +33,9 @@ components:
       isFocused: false
 
     methods:
-      # Emit the 'input' event with a standard DOM event structure
-      # expected by the `compileVModel` handler.
+      # Emit update:modelValue to trigger the parent's v-model update
       handleInput: |
-        emit('input', { target: { value: $event } })
+        emit('update:modelValue', $event)
 
       handleFocus: |
         isFocused = true
@@ -51,27 +46,22 @@ components:
         emit('blur')
 
     template:
-      div:
-        class: "custom-input-wrapper"
-        attrs:
-          :class: "{ 'is-focused': isFocused, 'has-value': value.length > 0 }"
+      div .space-y-1.5:
         children:
-          - label:
-              class: "custom-label"
+          - label .block .text-xs .font-bold .text-slate-500 .dark:text-slate-400 .uppercase .tracking-wider:
               text: "{{ label }}"
-          - input:
-              type: "text"
-              class: "custom-input"
-              attrs:
-                # Bind the internal input to the injected `value` prop
-                :value: "value"
-                :placeholder: "placeholder"
-              # Capture raw DOM events and propagate through component boundary
-              "@input": "handleInput($event.target.value)"
-              "@focus": "handleFocus"
-              "@blur": "handleBlur"
+          - div .relative:
+              children:
+                - input .w-full .bg-slate-50 .dark:bg-slate-800/50 .border .border-slate-300 .dark:border-slate-700 .rounded-xl .px-4 .py-3 .text-sm .text-slate-900 .dark:text-white .outline-none .focus:ring-2 .focus:ring-slate-900/20 .dark:focus:ring-slate-100/20 .focus:border-slate-900 .dark:focus:border-slate-100 .transition-all:
+                    attrs:
+                      type: "text"
+                      :value: "modelValue"
+                      :placeholder: "placeholder"
+                    "@input": "handleInput($event.target.value)"
+                    "@focus": "handleFocus"
+                    "@blur": "handleBlur"
 
-  # The Consumer Component (The "Parent")
+  # Main editor component
   UserProfileEditor:
     signals:
       username: 'eider_fan_99'
@@ -89,70 +79,76 @@ components:
       
       saveProfile: |
         isEditing = false
-        console.log('Profile saved:', fullName, username)
 
     template:
-      div:
-        class: "profile-editor"
-        children:
-          - h2: "User Profile"
-          
-          # View Mode
-          - div:
-              v-if: "isEditing == false"
-              class: "profile-view"
-              children:
-                - p:
-                    strong: "Username: "
-                    text: "{{ username }}"
-                - p:
-                    strong: "Full Name: "
-                    text: "{{ fullName }}"
-                - button:
-                    "@click": "toggleEdit"
-                    text: "Edit Profile"
-          
-          # Edit Mode
-          - div:
-              v-else: true
-              class: "profile-edit-form"
-              children:
-                # Two-way data binding via v-model
-                - CustomTextInput:
-                    v-model: "username"
-                    attrs:
-                      label: "Username"
-                      placeholder: "Choose a new username"
-                
-                - CustomTextInput:
-                    v-model: "firstName"
-                    attrs:
-                      label: "First Name"
-                      placeholder: "Enter first name"
-                
-                - CustomTextInput:
-                    v-model: "lastName"
-                    attrs:
-                      label: "Last Name"
-                      placeholder: "Enter last name"
-                      
-                - div:
-                    class: "form-actions"
-                    children:
-                      - button:
-                          "@click": "toggleEdit"
-                          class: "btn-cancel"
-                          text: "Cancel"
-                      - button:
-                          "@click": "saveProfile"
-                          class: "btn-primary"
-                          text: "Save Changes"
+      div .min-h-screen .bg-slate-50 .dark:bg-slate-950 .py-12 .px-4:
+        div .max-w-xl .mx-auto:
+          children:
+            - h1 .text-3xl .font-black .text-slate-900 .dark:text-white .mb-2: "Profile Settings"
+            - p .text-slate-500 .dark:text-slate-400 .mb-8: "Real-time state synchronization across component boundaries."
 
-          # Debug panel to verify real-time sync
-          - div:
-              class: "debug-panel"
-              style: "margin-top: 2rem; padding: 1rem; background: #f0f0f0; border-radius: 4px;"
-              children:
-                - h4: "Live State"
-                - pre: "{{ {\n  username: username,\n  firstName: firstName,\n  lastName: lastName \n} | json }}"
+            # Read-only profile view
+            - div .bg-white .dark:bg-slate-900 .rounded-3xl .shadow-xl .shadow-slate-900/5 .border .border-slate-200 .dark:border-slate-800 .overflow-hidden:
+                v-if: "isEditing == false"
+                children:
+                  - div .p-8:
+                      children:
+                        - div .flex .items-center .gap-4 .mb-6:
+                            children:
+                              - div .w-16 .h-16 .rounded-full .bg-slate-900 .dark:bg-slate-100 .flex .items-center .justify-center .text-white .dark:text-slate-900 .text-2xl .font-bold:
+                                  text: "{{ username[0].toUpperCase() }}"
+                              - div:
+                                  children:
+                                    - h2 .text-xl .font-bold .text-slate-900 .dark:text-white: "{{ fullName }}"
+                                    - p .text-slate-600 .dark:text-slate-400 .text-sm: "@{{ username }}"
+                        - div .grid .grid-cols-2 .gap-4 .mb-8:
+                            children:
+                              - div .bg-slate-50 .dark:bg-slate-800/50 .p-4 .rounded-2xl .border .border-slate-200 .dark:border-slate-800:
+                                  children:
+                                    - p .text-xs .text-slate-500 .uppercase .tracking-widest .mb-1: "First Name"
+                                    - p .text-slate-900 .dark:text-white .font-medium: "{{ firstName || '—' }}"
+                              - div .bg-slate-50 .dark:bg-slate-800/50 .p-4 .rounded-2xl .border .border-slate-200 .dark:border-slate-800:
+                                  children:
+                                    - p .text-xs .text-slate-500 .uppercase .tracking-widest .mb-1: "Last Name"
+                                    - p .text-slate-900 .dark:text-white .font-medium: "{{ lastName || '—' }}"
+                        - button .w-full .bg-slate-900 .dark:bg-slate-100 .hover:bg-slate-800 .dark:hover:bg-white .text-white .dark:text-slate-900 .font-bold .py-4 .rounded-2xl .transition-all .active:scale-95:
+                            "@click": "toggleEdit"
+                            attrs:
+                              ":class": "{ 'opacity-50 cursor-not-allowed': isEditing }"
+                            text: "Edit Profile"
 
+            # Profile editing form
+            - div .bg-white .dark:bg-slate-900 .rounded-3xl .shadow-xl .shadow-slate-900/5 .border .border-slate-200 .dark:border-slate-800 .p-8:
+                v-else: true
+                children:
+                  - div .space-y-6:
+                      children:
+                        - CustomTextInput:
+                            v-model: "username"
+                            attrs:
+                              label: "Username"
+                              placeholder: "@handle"
+                        - CustomTextInput:
+                            v-model: "firstName"
+                            attrs:
+                              label: "First Name"
+                              placeholder: "Your name"
+                        - CustomTextInput:
+                            v-model: "lastName"
+                            attrs:
+                              label: "Last Name"
+                              placeholder: "Your surname"
+                  - div .flex .gap-3 .mt-8:
+                      children:
+                        - button .flex-1 .bg-slate-100 .dark:bg-slate-800 .hover:bg-slate-200 .dark:hover:bg-slate-700 .text-slate-600 .dark:text-slate-300 .font-bold .py-4 .rounded-2xl .transition-all:
+                            "@click": "toggleEdit"
+                            text: "Cancel"
+                        - button .flex-1 .bg-slate-900 .dark:bg-slate-100 .hover:bg-slate-800 .dark:hover:bg-white .text-white .dark:text-slate-900 .font-bold .py-4 .rounded-2xl .transition-all .active:scale-95:
+                            "@click": "saveProfile"
+                            text: "Save"
+
+            # Real-time state preview
+            - div .mt-8 .bg-slate-900 .rounded-2xl .p-6 .border .border-slate-800:
+                children:
+                  - h4 .text-xs .font-bold .text-slate-400 .uppercase .tracking-widest .mb-4: "State Pulse"
+                  - pre .text-slate-300 .text-xs: "{{ {\n  username: username,\n  firstName: firstName,\n  lastName: lastName \n} | json }}"
