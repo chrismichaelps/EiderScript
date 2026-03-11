@@ -142,13 +142,13 @@ function jsFallbackEvaluate(
   bindings: Record<string, unknown>,
 ): unknown {
   try {
-    let fn: Function
+    let fn: (ctx: Record<string, unknown>) => unknown
     try {
       // eslint-disable-next-line @typescript-eslint/no-implied-eval
-      fn = new Function('$$ctx', `with($$ctx) { return (${expr}) }`)
+      fn = new Function('$$ctx', `with($$ctx) { return (${expr}) }`) as (ctx: Record<string, unknown>) => unknown
     } catch {
       // eslint-disable-next-line @typescript-eslint/no-implied-eval
-      fn = new Function('$$ctx', `with($$ctx) { ${expr} }`)
+      fn = new Function('$$ctx', `with($$ctx) { ${expr} }`) as (ctx: Record<string, unknown>) => unknown
     }
 
     const result: unknown = fn(bindings)

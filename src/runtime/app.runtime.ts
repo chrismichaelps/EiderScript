@@ -50,7 +50,7 @@ export const createEiderApp = (
       dirFor: eiderConstants.dirFor,
       dirModel: eiderConstants.dirModel,
       defaultHtmlTag: eiderConstants.defaultHtmlTag,
-      fragmentHtmlTag: Fragment as any,
+      fragmentHtmlTag: Fragment as string | symbol | object,
       directiveRe: new RegExp(`^(${eiderConstants.dirIf}|v-else-if|v-else|${eiderConstants.dirFor}|${eiderConstants.dirModel}|v-show|v-bind|v-on|v-slot|v-once|v-pre|v-memo|v-cloak|v-text|v-html|@\\w[\\w.-]*|:\\w[\\w.-]*|#\\w[\\w.-]*)$`),
     }
 

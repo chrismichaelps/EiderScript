@@ -9,6 +9,7 @@ import {
   provide,
   inject,
   Fragment,
+  defineComponent
 } from 'vue'
 import { Effect } from 'effect'
 import type { ComponentAST } from '../schema/component.schema.js'
@@ -224,8 +225,8 @@ function buildAsyncExecutor(
         const fn = new Function(
           '$$ctx',
           `return (async () => { with($$ctx) { ${body} } })()`,
-        )
-        return fn(ctx) as Promise<unknown>
+        ) as (ctx: Record<string, unknown>) => Promise<unknown>
+        return fn(ctx)
       },
       catch: (cause) =>
         new CompileError({
@@ -421,13 +422,13 @@ export const compileComponent = (
           return compileNode(ast.template, scope, tplConfig)
         }
 
-        return {
+        return defineComponent({
           name: ast.name,
-          props: propsSchema,
+          props: propsSchema as Record<string, import('vue').Prop<unknown>>,
           emits: ast.emits,
           setup,
           render,
-        }
+        })
       },
       catch: (cause) =>
         new CompileError({

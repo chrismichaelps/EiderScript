@@ -1,0 +1,322 @@
+kind: app
+name: RoutingDemo
+
+global:
+  plugins: []
+
+router:
+  scrollBehavior: top
+  routes:
+    # Root redirect to home
+    - path: /
+      redirect: /home
+
+    # Home page
+    - path: /home
+      component: HomeView
+      name: home
+      meta:
+        title: Home
+
+    # About — also reachable at /info via alias
+    - path: /about
+      component: AboutView
+      name: about
+      alias: /info
+      meta:
+        title: About
+
+    # User profile — params passed as props to component
+    - path: /user/:id
+      component: UserProfile
+      name: user-profile
+      props: true
+      meta:
+        title: User Profile
+        requiresAuth: true
+
+    # Settings with nested tab routes
+    - path: /settings
+      component: SettingsLayout
+      name: settings
+      meta:
+        requiresAuth: true
+      children:
+        - path: ''
+          component: SettingsGeneral
+          name: settings-general
+        - path: account
+          component: SettingsAccount
+          name: settings-account
+        - path: notifications
+          component: SettingsNotifications
+          name: settings-notifications
+
+    # Admin section with nested routes + redirect index
+    - path: /admin
+      component: AdminLayout
+      meta:
+        requiresAuth: true
+        roles:
+          - admin
+      children:
+        - path: ''
+          name: admin
+          redirect:
+            name: admin-dashboard
+        - path: dashboard
+          component: AdminDashboard
+          name: admin-dashboard
+        - path: users
+          component: AdminUsers
+          name: admin-users
+        - path: users/:id
+          component: AdminUserDetail
+          name: admin-user-detail
+          props: true
+
+    # Legacy redirect with named target + params
+    - path: /profile
+      redirect:
+        name: user-profile
+        params:
+          id: me
+
+    # Protected page — only accessible with ?token=secret
+    - path: /protected
+      component: ProtectedView
+      name: protected
+      beforeEnter: "to.query.token === 'secret'"
+      meta:
+        title: Protected Page
+
+    # Dynamic Details — demonstrating prop mapping expression
+    - path: /details/:type
+      component: DetailView
+      name: details
+      props: "{ type: route.params.type, timestamp: Date.now() }"
+      meta:
+        title: Dynamic Details
+
+    # 404 catch-all
+    - path: /:pathMatch(.*)*
+      component: NotFound
+      name: not-found
+
+components:
+  HomeView:
+    template:
+      div .flex .flex-col .items-center .justify-center .min-h-[60vh] .text-center .bg-white .text-black .animate-fade-in:
+        h1 .text-5xl .font-extrabold .mb-6 .text-black: Home
+        p .text-lg .text-gray-800 .mb-8 .max-w-md: Welcome to the EiderScript Routing Demo. Explore the features using the navigation below.
+        nav .flex .gap-4:
+          - RouterLink:
+              attrs:
+                to: /about
+                class: inline-flex items-center px-6 py-3 border border-black text-base font-medium rounded-full text-white bg-black hover:bg-gray-800 transition
+              text: About →
+          - RouterLink:
+              attrs:
+                to: /protected
+                class: inline-flex items-center px-6 py-3 border border-black text-base font-medium rounded-full text-black bg-white hover:bg-gray-100 transition
+              text: Protected
+          - RouterLink:
+              attrs:
+                to: /details/demo
+                class: inline-flex items-center px-6 py-3 border border-black text-base font-medium rounded-full text-black bg-white hover:bg-gray-100 transition
+              text: Dynamic Props
+
+  AboutView:
+    template:
+      div .max-w-4xl .mx-auto .p-8 .bg-white .text-black .animate-fade-in:
+        div .bg-white .rounded-2xl .shadow-xl .p-10 .border .border-black:
+          h1 .text-4xl .font-bold .text-black .mb-4: About
+          p .text-gray-800 .mb-8 .text-lg .leading-relaxed: This demo showcases EiderScript's powerful YAML-based routing system built on top of Vue Router. It supports nested routes, dynamic params, redirects, and lazy-loading components natively.
+          nav:
+            RouterLink:
+              attrs:
+                to: /home
+                class: inline-flex items-center px-4 py-2 border border-black rounded-lg text-sm font-medium text-black bg-white hover:bg-gray-100 transition-colors duration-200
+              text: ← Back to Home
+
+  UserProfile:
+    props:
+      id:
+        type: String
+    template:
+      div .max-w-md .mx-auto .mt-12 .bg-white .rounded-xl .shadow-md .overflow-hidden .border .border-black:
+        div .p-8 .text-center:
+          div .inline-flex .items-center .justify-center .w-20 .h-20 .rounded-full .bg-black .text-white .text-3xl .font-bold .mb-4: "{{ id.charAt(0).toUpperCase() }}"
+          h1 .text-2xl .font-bold .text-black .mb-2: User Profile
+          p .text-gray-700: 
+            - "Viewing profile for user: "
+            - span .font-mono .text-white .bg-black .px-2 .py-1 .rounded .ml-1: "{{ id }}"
+
+  ProtectedView:
+    template:
+      div .max-w-md .mx-auto .mt-12 .p-8 .bg-white .border .border-black .rounded-xl .text-center .animate-fade-in:
+        h1 .text-3xl .font-bold .mb-4: Protected Area
+        p .text-gray-800 .mb-6: You have successfully accessed this page because you provided the correct secret token in the URL!
+        RouterLink:
+          attrs:
+            to: /home
+            class: inline-flex px-4 py-2 border border-black rounded hover:bg-black hover:text-white transition
+          text: ← Back to Home
+
+  DetailView:
+    props:
+      type:
+        type: String
+      timestamp:
+        type: Number
+    template:
+      div .max-w-2xl .mx-auto .mt-12 .p-10 .bg-white .border .border-black .rounded-2xl .animate-fade-in:
+        h1 .text-3xl .font-bold .mb-4: Dynamic Details
+        div .space-y-4:
+          - p: 
+              - "Requested Type: "
+              - span .font-mono .bg-black .text-white .px-2 .py-1 .rounded: "{{ type }}"
+          - p:
+              - "Generated at: "
+              - span .text-gray-500: "{{ timestamp }}"
+        div .mt-8:
+          RouterLink:
+            attrs:
+              to: /home
+              class: inline-flex px-4 py-2 border border-black rounded hover:bg-black hover:text-white transition
+            text: ← Back Home
+
+  SettingsLayout:
+    template:
+      div .max-w-5xl .mx-auto .p-6 .bg-white .text-black .animate-fade-in:
+        h1 .text-3xl .font-bold .text-black .mb-8: Settings
+        div .flex .flex-col .md:flex-row .gap-8:
+          aside .w-full .md:w-64 .flex-shrink-0:
+            nav .flex .flex-col .space-y-1:
+              - RouterLink:
+                  ':to': "{ name: 'settings-general' }"
+                  attrs:
+                    class: px-4 py-2 rounded-lg text-sm font-medium text-gray-800 hover:bg-gray-200 transition-colors
+                    active-class: bg-black text-white
+                  text: General
+              - RouterLink:
+                  ':to': "{ name: 'settings-account' }"
+                  attrs:
+                    class: px-4 py-2 rounded-lg text-sm font-medium text-gray-800 hover:bg-gray-200 transition-colors
+                    active-class: bg-black text-white
+                  text: Account
+              - RouterLink:
+                  ':to': "{ name: 'settings-notifications' }"
+                  attrs:
+                    class: px-4 py-2 rounded-lg text-sm font-medium text-gray-800 hover:bg-gray-200 transition-colors
+                    active-class: bg-black text-white
+                  text: Notifications
+          main .flex-1 .bg-white .rounded-xl .shadow-sm .border .border-black .p-6:
+            RouterView: {}
+
+  SettingsGeneral:
+    template:
+      div:
+        h2 .text-xl .font-semibold .text-black .mb-4: General Preferences
+        p .text-gray-800: Manage your general application preferences and default settings.
+
+  SettingsAccount:
+    template:
+      div:
+        h2 .text-xl .font-semibold .text-black .mb-4: Account Details
+        p .text-gray-800: Update your personal profile, email, and security credentials.
+
+  SettingsNotifications:
+    template:
+      div:
+        h2 .text-xl .font-semibold .text-black .mb-4: Notification Settings
+        p .text-gray-800: Control how and when you receive alerts and communications.
+
+  AdminLayout:
+    template:
+      div .min-h-[70vh] .flex .bg-white .rounded-xl .overflow-hidden .border .border-black:
+        aside .w-64 .bg-white .border-r .border-black .text-black .p-6:
+          div .text-xl .font-bold .mb-8 .tracking-wide: ADMIN PANEL
+          nav:
+            ul .space-y-2:
+              - li:
+                  RouterLink:
+                    ':to': "{ name: 'admin-dashboard' }"
+                    attrs:
+                      class: block px-4 py-3 rounded-lg text-sm font-medium text-black border border-transparent hover:border-black transition-all
+                      active-class: bg-black text-white shadow-md
+                    text: Dashboard
+              - li:
+                  RouterLink:
+                    ':to': "{ name: 'admin-users' }"
+                    attrs:
+                      class: block px-4 py-3 rounded-lg text-sm font-medium text-black border border-transparent hover:border-black transition-all
+                      active-class: bg-black text-white shadow-md
+                    text: Users
+        main .flex-1 .p-8:
+          RouterView: {}
+
+  AdminDashboard:
+    template:
+      div:
+        h2 .text-2xl .font-bold .text-black .mb-6: Dashboard Overview
+        div .grid .grid-cols-1 .md:grid-cols-3 .gap-6:
+          - div .bg-white .p-6 .rounded-xl .shadow-sm .border .border-black:
+              div .text-sm .font-medium .text-gray-600: Total Users
+              div .mt-2 .text-3xl .font-bold .text-black: 14,235
+          - div .bg-white .p-6 .rounded-xl .shadow-sm .border .border-black:
+              div .text-sm .font-medium .text-gray-600: Active Sessions
+              div .mt-2 .text-3xl .font-bold .text-black: 842
+          - div .bg-white .p-6 .rounded-xl .shadow-sm .border .border-black:
+              div .text-sm .font-medium .text-gray-600: Revenue
+              div .mt-2 .text-3xl .font-bold .text-black: $24,500
+
+  AdminUsers:
+    template:
+      div:
+        h2 .text-2xl .font-bold .text-black .mb-6: User Management
+        div .bg-white .shadow-sm .rounded-lg .border .border-black .overflow-hidden:
+          ul .divide-y .divide-black:
+            - li .p-4 .hover:bg-gray-100 .transition-colors:
+                RouterLink:
+                  ':to': "{ name: 'admin-user-detail', params: { id: 'alice' } }"
+                  attrs:
+                    class: flex items-center justify-between text-black font-medium
+                  text: Alice
+            - li .p-4 .hover:bg-gray-100 .transition-colors:
+                RouterLink:
+                  ':to': "{ name: 'admin-user-detail', params: { id: 'bob' } }"
+                  attrs:
+                    class: flex items-center justify-between text-black font-medium
+                  text: Bob
+
+  AdminUserDetail:
+    props:
+      id:
+        type: String
+    template:
+      div .bg-white .p-6 .rounded-xl .shadow-sm .border .border-black:
+        div .flex .items-center .mb-6:
+          RouterLink:
+            ':to': "{ name: 'admin-users' }"
+            attrs:
+              class: text-sm text-gray-800 border border-black px-2 py-1 rounded hover:bg-black hover:text-white mr-4 transition-colors
+            text: ← Back
+          h2 .text-2xl .font-bold .text-black: Edit User
+        div .p-4 .bg-white .rounded-lg .border .border-black:
+          p .text-black: 
+            - "Managing attributes for admin user: "
+            - strong .text-white .bg-black .px-2 .py-1 .rounded: "{{ id }}"
+
+  NotFound:
+    template:
+      div .min-h-[60vh] .flex .flex-col .items-center .justify-center .text-center .bg-white:
+        div .text-9xl .font-black .text-gray-300: 404
+        h1 .text-4xl .font-bold .text-black .mt-4 .mb-2: Page Not Found
+        p .text-lg .text-gray-800 .mb-8: The route you are looking for does not exist.
+        nav:
+          RouterLink:
+            ':to': "{ name: 'home' }"
+            attrs:
+              class: inline-flex px-6 py-3 rounded-full border border-black bg-black text-white font-medium hover:bg-white hover:text-black transition
+            text: Go back home

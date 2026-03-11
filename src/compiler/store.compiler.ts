@@ -76,7 +76,7 @@ export const compileStore = (
                     const fn = new Function(
                       'scope',
                       `with(scope) { return (async () => { ${body} })() }`,
-                    )
+                    ) as (scope: Record<string, unknown>) => Promise<unknown>
                     return fn(scopeProxy)
                   },
                   catch: (e) =>

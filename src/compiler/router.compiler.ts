@@ -1,27 +1,93 @@
-/** @EiderScript.Compiler.Router - AppAST to Vue Router createRouter configuration */
+/** @EiderScript.Compiler.Router - Vue Router configuration compiler */
 import {
   createRouter,
   createWebHistory,
   createMemoryHistory,
 } from 'vue-router'
-import type { RouteRecordRaw, RouteComponent } from 'vue-router'
+import type {
+  RouteRecordRaw,
+  RouteComponent,
+  RouterScrollBehavior,
+  RouteLocationRaw
+} from 'vue-router'
 import type { AppAST, RouteAST } from '../schema/router.schema.js'
+import { createScope } from '../runtime/scope.js'
 
-/**
- * @EiderScript.Compiler.Router - Converts RouteAST tree into RouteRecordRaw[].
- * Component names are resolved at runtime via the injected resolveComponent fn.
- */
+/** Converts RouteAST tree into RouteRecordRaw[]. */
 function buildRoutes(
   routes: RouteAST[],
   resolveComponent: (name: string) => RouteComponent,
 ): RouteRecordRaw[] {
-  return routes.map((route) => ({
-    path: route.path,
-    component: resolveComponent(route.component),
-    ...(route.children?.length
-      ? { children: buildRoutes(route.children, resolveComponent) }
-      : {}),
-  }))
+  return routes.map((route) => {
+    const base: RouteRecordRaw = {
+      path: route.path,
+      ...(route.name ? { name: route.name } : {}),
+      ...(route.meta ? { meta: route.meta } : {}),
+      ...(route.alias !== undefined ? { alias: route.alias } : {}),
+    } as RouteRecordRaw
+
+    // Map route props
+    if (route.props !== undefined) {
+      if (typeof route.props === 'string') {
+        const expr = route.props
+        base.props = (to) => {
+          const scope = createScope({}, {}, {}, {}, {
+            inject: {
+              route: to,
+              params: to.params,
+              query: to.query
+            }
+          })
+          const result = scope.evaluate(expr)
+          return typeof result === 'object' && result !== null ? result : {}
+        }
+      } else {
+        base.props = route.props as Record<string, unknown> | boolean
+      }
+    }
+
+    // Navigation guards
+    if (route.beforeEnter) {
+      const guardExpr = route.beforeEnter
+      base.beforeEnter = (to, from) => {
+        const scope = createScope({}, {}, {}, {}, { inject: { to, from } })
+        const result = scope.evaluate(guardExpr)
+
+        if (result === false) return false
+        if (typeof result === 'string' || (typeof result === 'object' && result !== null)) {
+          return result as RouteLocationRaw
+        }
+        return true
+      }
+    }
+
+    if (route.redirect !== undefined) {
+      Object.assign(base, { redirect: route.redirect })
+      if (!route.component) {
+        if (route.children?.length) {
+          Object.assign(base, { children: buildRoutes(route.children, resolveComponent) })
+        }
+        return base
+      }
+    }
+
+    if (route.component) {
+      Object.assign(base, { component: resolveComponent(route.component) })
+    }
+
+    if (route.children?.length) {
+      Object.assign(base, { children: buildRoutes(route.children, resolveComponent) })
+    }
+
+    return base
+  })
+}
+
+/** Map scroll behavior. */
+function buildScrollBehavior(mode?: 'top' | 'preserve'): RouterScrollBehavior | undefined {
+  if (mode === 'top') return () => ({ top: 0, behavior: 'smooth' })
+  if (mode === 'preserve') return (_to, _from, savedPosition) => savedPosition ?? { top: 0 }
+  return undefined
 }
 
 /** @EiderScript.Compiler.Router.compileRouter - Creates a Vue Router from AppAST */
@@ -35,23 +101,29 @@ export function compileRouter(
 
   const routes = buildRoutes(ast.router.routes, resolveComponent)
 
-  // Inject a catch-all redirect to the first declared route if no root route exists
-  // to prevent Vue Router 'No match found' warnings with memory history.
+  // Root catch-all for memory history.
   if (memoryHistory && routes.length > 0) {
-    const hasRootPath = routes.some(r => r.path === '/');
-    if (!hasRootPath) {
-      const firstRealRoute = routes.find(r => r.path && !r.path.toString().includes(':catchAll'));
+    const hasRootPath = routes.some(r => r.path === '/')
+    const hasCatchAll = routes.some(r => r.path.toString().includes(':pathMatch'))
+
+    if (!hasRootPath && !hasCatchAll) {
+      const firstRealRoute = routes.find(
+        r => r.path && !r.path.toString().includes(':pathMatch'),
+      )
       if (firstRealRoute) {
         routes.push({
           path: '/:pathMatch(.*)*',
-          redirect: firstRealRoute.path
-        });
+          redirect: firstRealRoute.path as string,
+        })
       }
     }
   }
 
+  const scrollBehavior = buildScrollBehavior(ast.router.scrollBehavior)
+
   return createRouter({
     history: ssr || memoryHistory ? createMemoryHistory() : createWebHistory(),
     routes,
+    ...(scrollBehavior ? { scrollBehavior } : {}),
   })
 }
