@@ -56,14 +56,23 @@ function buildTemplateConfig(c: {
   }
 }
 
+type PropConstructor = StringConstructor | NumberConstructor | BooleanConstructor | ArrayConstructor | ObjectConstructor
+
 function buildPropsSchema(
   propDefs: ComponentAST['props'],
-): Record<string, { type: StringConstructor; default: unknown }> {
-  const schema: Record<string, { type: StringConstructor; default: unknown }> =
-    {}
+): Record<string, { type: PropConstructor; default: unknown }> {
+  const schema: Record<string, { type: PropConstructor; default: unknown }> = {}
 
   for (const [key, def] of Object.entries(propDefs ?? {})) {
-    schema[key] = { type: String, default: def.default }
+    let propType: PropConstructor = String
+    if (def.type) {
+      const t = def.type.toLowerCase()
+      if (t === 'boolean') propType = Boolean
+      else if (t === 'number') propType = Number
+      else if (t === 'array') propType = Array
+      else if (t === 'object') propType = Object
+    }
+    schema[key] = { type: propType, default: def.default }
   }
 
   return schema

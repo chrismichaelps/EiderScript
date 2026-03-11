@@ -7,62 +7,63 @@ router:
 
 components:
   - name: Modal
-    signals:
-      visible: false
+    props:
+      title:
+        type: string
+        default: ''
+      message:
+        type: string
+        default: ''
+      show:
+        type: boolean
+        default: false
+    
     methods:
-      open: "visible = true"
-      close: "visible = false"
-      confirm: "onConfirm(); visible = false"
+      close: "emit('close')"
+      confirm: "emit('confirm')"
 
     template:
-      # Trigger slot (passed via parent)
-      div:
-        slot: trigger
+      # Modal Overlay
+      div .fixed .inset-0 .z-50 .flex .items-center .justify-center .p-4 .transition-all .duration-300 .antialiased:
+        v-show: show
+        children:
+          # Backdrop
+          - div .absolute .inset-0 .bg-slate-950/60 .backdrop-blur-sm .transition-opacity:
+              "@click": close
 
-        # Backdrop + modal (v-show for performance, inner v-if for mount)
-        div .fixed .inset-0 .z-50 .flex .items-center .justify-center .p-4:
-          v-show: visible
+          # Modal Panel
+          - div .relative .z-10 .w-full .max-w-md .bg-white .dark:bg-slate-900 .rounded-[2rem] .shadow-2xl .border .border-slate-200 .dark:border-slate-800 .overflow-hidden .transition-all .duration-300:
+              children:
+                # Header
+                - div .flex .items-center .justify-between .px-8 .py-6 .border-b .border-slate-100 .dark:border-slate-800:
+                    children:
+                      - h3 .text-xl .font-bold .text-slate-900 .dark:text-white:
+                          text: "{{ title }}"
+                      - button .w-10 .h-10 .rounded-xl .flex .items-center .justify-center .text-slate-400 .hover:bg-slate-50 .dark:hover:bg-slate-800 .transition-colors:
+                          "@click": close
+                          children:
+                            - img .w-5 .h-5:
+                                attrs:
+                                  src: "https://api.iconify.design/lucide:x.svg"
 
-          # Backdrop (click outside to close)
-          div .absolute .inset-0 .bg-black/50 .backdrop-blur-sm .transition-opacity .duration-300:
-            "@click": close
+                # Body
+                - div .px-8 .py-8:
+                    children:
+                      - p .text-slate-600 .dark:text-slate-400 .leading-relaxed:
+                          text: "{{ message }}"
+                      - slot:
+                          attrs:
+                            name: body
 
-          # Modal panel
-          div .relative .z-10 .w-full .max-w-md .bg-white .dark:bg-gray-900
-            .rounded-2xl .shadow-2xl .shadow-black/20
-            .border .border-gray-200 .dark:border-gray-800
-            .overflow-hidden .transition-all .duration-300:
-
-            # Header
-            div .flex .items-center .justify-between .px-6 .py-4
-              .border-b .border-gray-100 .dark:border-gray-800:
-              h3 .text-lg .font-semibold .text-gray-900 .dark:text-white:
-                "{{ title }}"
-              button .w-8 .h-8 .rounded-lg .flex .items-center .justify-center
-                .text-gray-400 .hover:text-gray-500 .hover:bg-gray-100 .dark:hover:bg-gray-800
-                .transition-colors:
-                "@click": close
-                text: "✕"
-
-            # Body
-            div .px-6 .py-5:
-              slot: body
-              p .text-sm .text-gray-600 .dark:text-gray-300 .leading-relaxed:
-                "{{ message }}"
-
-            # Footer
-            div .flex .items-center .justify-end .gap-3 .px-6 .py-4
-              .border-t .border-gray-100 .dark:border-gray-800 .bg-gray-50 .dark:bg-gray-900/50:
-              button .px-4 .py-2 .text-sm .font-medium .text-gray-600 .dark:text-gray-400
-                .hover:text-gray-900 .dark:hover:text-white .hover:bg-gray-100 .dark:hover:bg-gray-800
-                .rounded-lg .transition-colors:
-                "@click": close
-                text: "Cancel"
-              button .px-4 .py-2 .text-sm .font-semibold .text-white
-                .bg-indigo-600 .hover:bg-indigo-700 .active:scale-95
-                .rounded-lg .transition-all .duration-150 .shadow-sm:
-                "@click": confirm
-                text: "Confirm"
+                # Footer
+                - div .flex .items-center .justify-end .gap-3 .px-8 .py-6 .bg-slate-50 .dark:bg-slate-800/50:
+                    children:
+                      - button .px-6 .py-2.5 .text-sm .font-semibold .text-slate-600 .dark:text-slate-400 .hover:text-slate-900 .dark:hover:text-white .transition-colors:
+                          "@click": close
+                          text: "Cancel"
+                      - button .px-6 .py-2.5 .text-sm .font-bold .text-white .bg-slate-900 .hover:bg-slate-800 .dark:bg-slate-100 .dark:text-slate-900 .dark:hover:bg-white .rounded-xl .active:scale-95 .transition-all:
+                          "@click": confirm
+                          text: "Confirm"
 
   - name: ModalDemo
     signals:
@@ -72,83 +73,63 @@ components:
       result: ""
 
     methods:
-      openBasic: "showBasic = true"
-      openDelete: "showDelete = true"
-      openSuccess: "showSuccess = true"
-      confirmDelete: "result = 'Item deleted'; showDelete = false"
-      confirmBasic: "result = 'Confirmed!'; showBasic = false"
+      onConfirmBasic: "result = 'Action confirmed'; showBasic = false"
+      onConfirmDelete: "result = 'Item deleted permanently'; showDelete = false"
+      onConfirmSuccess: "result = 'Operation completed'; showSuccess = false"
 
     template:
-      div .min-h-screen .bg-gray-50 .dark:bg-gray-950 .p-8:
-        div .max-w-2xl .mx-auto .space-y-8:
+      div .min-h-screen .bg-slate-50 .dark:bg-slate-950 .p-8:
+        div .max-w-2xl .mx-auto:
+          children:
+            - div .mb-12 .text-center:
+                children:
+                  - h1 .text-4xl .font-black .text-slate-900 .dark:text-white .tracking-tight .mb-3: "Modal System"
+                  - p .text-slate-500 .dark:text-slate-400: "Clean, accessible, and reactive modal components"
 
-          h1 .text-3xl .font-bold .text-gray-900 .dark:text-white: "Modal Examples"
+            # Result feedback
+            - div .mb-8 .px-6 .py-4 .bg-emerald-50 .dark:bg-emerald-950/30 .border .border-emerald-100 .dark:border-emerald-900/50 .rounded-2xl .flex .items-center .gap-3:
+                v-if: result
+                children:
+                  - img .w-5 .h-5 .text-emerald-600:
+                      attrs:
+                        src: "https://api.iconify.design/lucide:check-circle.svg"
+                  - span .text-sm .font-bold .text-emerald-700 .dark:text-emerald-400:
+                      text: "{{ result }}"
 
-          # Result feedback
-          div .px-4 .py-3 .bg-emerald-50 .dark:bg-emerald-900/20
-            .border .border-emerald-200 .dark:border-emerald-800
-            .rounded-xl .text-sm .font-medium .text-emerald-700 .dark:text-emerald-300:
-            v-if: result
-            text: "✓ {{ result }}"
+            # Triggers grid
+            - div .grid .grid-cols-1 .sm:grid-cols-3 .gap-4:
+                children:
+                  - button .px-6 .py-4 .rounded-2xl .text-sm .font-bold .bg-white .dark:bg-slate-900 .border .border-slate-200 .dark:border-slate-800 .text-slate-900 .dark:text-white .hover:shadow-lg .transition-all:
+                      "@click": "showBasic = true"
+                      text: "Basic Modal"
+                  - button .px-6 .py-4 .rounded-2xl .text-sm .font-bold .bg-red-50 .dark:bg-red-950/30 .border .border-red-100 .dark:border-red-900/50 .text-red-700 .dark:text-red-400 .hover:bg-red-100 .transition-all:
+                      "@click": "showDelete = true"
+                      text: "Delete Modal"
+                  - button .px-6 .py-4 .rounded-2xl .text-sm .font-bold .bg-slate-900 .dark:bg-slate-100 .text-white .dark:text-slate-900 .hover:shadow-xl .active:scale-95 .transition-all:
+                      "@click": "showSuccess = true"
+                      text: "Success Modal"
 
-          # Triggers grid
-          div .grid .grid-cols-1 .sm:grid-cols-3 .gap-4:
-            button .px-4 .py-3 .rounded-xl .text-sm .font-semibold
-              .bg-white .dark:bg-gray-900 .border .border-gray-200 .dark:border-gray-800
-              .text-gray-700 .dark:text-gray-200 .hover:border-indigo-300 .dark:hover:border-indigo-700
-              .shadow-sm .transition-all .duration-200:
-              "@click": openBasic
-              text: "Open basic modal"
-            button .px-4 .py-3 .rounded-xl .text-sm .font-semibold
-              .bg-red-50 .dark:bg-red-900/20 .border .border-red-200 .dark:border-red-800
-              .text-red-700 .dark:text-red-300 .hover:bg-red-100 .dark:hover:bg-red-900/30
-              .shadow-sm .transition-all .duration-200:
-              "@click": openDelete
-              text: "⚠ Delete modal"
-            button .px-4 .py-3 .rounded-xl .text-sm .font-semibold
-              .bg-indigo-600 .hover:bg-indigo-700 .text-white .shadow-sm .shadow-indigo-500/30
-              .transition-all .duration-200:
-              "@click": openSuccess
-              text: "🎉 Success modal"
+            # Modal Instances
+            - Modal:
+                attrs:
+                  ":show": showBasic
+                  title: "Standard Action"
+                  message: "This is a basic modal component using slots and signals."
+                "@close": "showBasic = false"
+                "@confirm": onConfirmBasic
 
-          # Modals (v-show)
-          # Basic modal
-          div .fixed .inset-0 .z-50 .flex .items-center .justify-center .p-4:
-            v-show: showBasic
-            div .absolute .inset-0 .bg-black/50 .backdrop-blur-sm:
-              "@click": "showBasic = false"
-            div .relative .z-10 .w-full .max-w-md .bg-white .dark:bg-gray-900
-              .rounded-2xl .shadow-2xl .border .border-gray-200 .dark:border-gray-800 .overflow-hidden:
-              div .px-6 .py-4 .border-b .border-gray-100 .dark:border-gray-800:
-                h3 .font-semibold .text-gray-900 .dark:text-white: "Confirm action"
-              div .px-6 .py-5:
-                p .text-sm .text-gray-600 .dark:text-gray-300: "Are you sure you want to proceed?"
-              div .flex .gap-3 .justify-end .px-6 .py-4 .bg-gray-50 .dark:bg-gray-900/50:
-                button .px-4 .py-2 .text-sm .rounded-lg .text-gray-600 .hover:bg-gray-100 .transition-colors:
-                  "@click": "showBasic = false"
-                  text: "Cancel"
-                button .px-4 .py-2 .text-sm .font-semibold .text-white
-                  .bg-indigo-600 .hover:bg-indigo-700 .rounded-lg .active:scale-95 .transition-all:
-                  "@click": confirmBasic
-                  text: "Confirm"
+            - Modal:
+                attrs:
+                  ":show": showDelete
+                  title: "Confirm Deletion"
+                  message: "Are you sure you want to remove this item? This action is permanent."
+                "@close": "showDelete = false"
+                "@confirm": onConfirmDelete
 
-          # Delete modal
-          div .fixed .inset-0 .z-50 .flex .items-center .justify-center .p-4:
-            v-show: showDelete
-            div .absolute .inset-0 .bg-black/60 .backdrop-blur-sm:
-              "@click": "showDelete = false"
-            div .relative .z-10 .w-full .max-w-md .bg-white .dark:bg-gray-900
-              .rounded-2xl .shadow-2xl .border .border-red-100 .dark:border-red-900/50 .overflow-hidden:
-              div .px-6 .py-4 .bg-red-50 .dark:bg-red-900/20 .border-b .border-red-100 .dark:border-red-900:
-                h3 .font-semibold .text-red-800 .dark:text-red-300: "⚠ Delete item"
-              div .px-6 .py-5:
-                p .text-sm .text-gray-600 .dark:text-gray-300:
-                  "This action cannot be undone. The item will be permanently removed."
-              div .flex .gap-3 .justify-end .px-6 .py-4 .bg-gray-50 .dark:bg-gray-900/50:
-                button .px-4 .py-2 .text-sm .rounded-lg .text-gray-600 .hover:bg-gray-100 .transition-colors:
-                  "@click": "showDelete = false"
-                  text: "Cancel"
-                button .px-4 .py-2 .text-sm .font-semibold .text-white
-                  .bg-red-600 .hover:bg-red-700 .rounded-lg .active:scale-95 .transition-all:
-                  "@click": confirmDelete
-                  text: "Delete"
+            - Modal:
+                attrs:
+                  ":show": showSuccess
+                  title: "Success!"
+                  message: "Your request has been processed successfully."
+                "@close": "showSuccess = false"
+                "@confirm": onConfirmSuccess

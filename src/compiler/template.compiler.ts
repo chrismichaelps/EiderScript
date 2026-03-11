@@ -533,7 +533,7 @@ function createVNode(
       slotsObj,
       slotName,
       props,
-      children ? () => children as unknown as import('vue').VNodeArrayChildren : undefined,
+      children ? () => (Array.isArray(children) ? children : [children]) as unknown as import('vue').VNodeArrayChildren : undefined,
     )
   }
 
