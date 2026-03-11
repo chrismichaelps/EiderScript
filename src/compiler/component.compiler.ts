@@ -12,7 +12,7 @@ import {
 } from 'vue'
 import { Effect } from 'effect'
 import type { ComponentAST } from '../schema/component.schema.js'
-import { createScope, createRenderScope } from '../runtime/scope.js'
+import { createScope, createRenderScope, createLayeredProxy } from '../runtime/scope.js'
 import type { Scope } from '../runtime/scope.js'
 import { CompileError } from '../effects/errors.js'
 import { LiveServices } from '../effects/layers.js'
@@ -49,7 +49,7 @@ function buildTemplateConfig(c: {
     dirFor: c.dirFor,
     dirModel: c.dirModel,
     defaultHtmlTag: c.defaultHtmlTag,
-    fragmentHtmlTag: Fragment as any,
+    fragmentHtmlTag: Fragment as string | symbol | object,
     directiveRe: new RegExp(
       `^(${c.dirIf}|v-else-if|v-else|${c.dirFor}|${c.dirModel}|v-show|v-bind|v-on|v-slot|v-once|v-pre|v-memo|v-cloak|v-text|v-html|@\\w[\\w.-]*|:\\w[\\w.-]*|#\\w[\\w.-]*)$`,
     ),
@@ -215,18 +215,17 @@ function buildAsyncExecutor(
   actionName: string,
 ): () => Promise<unknown> {
   return () => {
-    const bindings = collectScopeBindings(scope, emit)
-    const paramNames = Object.keys(bindings)
-    const paramValues = Object.values(bindings)
+    const parentProxy = scope.proxy
+    const ctx = emit ? createLayeredProxy(parentProxy, ['emit'], [emit]) : parentProxy
 
     const effect = Effect.tryPromise({
       try: () => {
         // eslint-disable-next-line @typescript-eslint/no-implied-eval
         const fn = new Function(
-          ...paramNames,
-          `return (async () => { ${body} })()`,
+          '$$ctx',
+          `return (async () => { with($$ctx) { ${body} } })()`,
         )
-        return fn(...paramValues) as Promise<unknown>
+        return fn(ctx) as Promise<unknown>
       },
       catch: (cause) =>
         new CompileError({
@@ -296,12 +295,14 @@ function registerLifecycleHooks(ast: ComponentAST, scope: Scope): void {
 function buildSetupBindings(
   scope: Scope,
   actions: Record<string, () => unknown>,
+  emit?: EmitFn,
 ): Record<string, unknown> {
   return {
     ...scope.signals,
     ...scope.computeds,
     ...scope.methods,
     ...actions,
+    emit,
   }
 }
 
@@ -401,7 +402,7 @@ export const compileComponent = (
 
           registerLifecycleHooks(ast, scope)
 
-          return buildSetupBindings(scope, actions)
+          return buildSetupBindings(scope, actions, emit)
         }
 
         const render = function (

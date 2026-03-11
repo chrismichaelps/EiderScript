@@ -8,6 +8,7 @@ export interface Scope {
   readonly computeds: Record<string, ComputedRef<unknown>>
   readonly methods: Record<string, (...args: unknown[]) => unknown>
   readonly props: Record<string, unknown>
+  readonly proxy: Record<string, unknown>
   evaluate(expr: string): unknown
   createChild(localProps: Record<string, unknown>): Scope
   /** Optional: assign a value to an expression (e.g. for v-model in render scope). */
@@ -344,7 +345,7 @@ function extractMethodParams(body: string, tree: StateTree): string[] {
 /**
  * Creates a layered proxy that merges call-site arguments with scope bindings.
  */
-function createLayeredProxy(
+export function createLayeredProxy(
   proxy: Record<string, unknown>,
   paramNames: string[],
   args: unknown[],
@@ -467,6 +468,11 @@ export function createScope(
   const computeds: Record<string, ComputedRef<unknown>> = {}
   const methods: Record<string, (...args: unknown[]) => unknown> = {}
 
+  // Pre-populate method keys to prevent hoisting issues in extractMethodParams
+  for (const key of Object.keys(methodDefs)) {
+    methods[key] = () => {}
+  }
+
   const tree: StateTree = { props, signals, computeds, methods, context }
   const proxy = buildProxy(tree)
   const effectiveProxy = customProxy ?? proxy
@@ -489,6 +495,7 @@ export function createScope(
     computeds,
     methods,
     props,
+    proxy: effectiveProxy,
 
     evaluate: (expr: string) => safeEvaluate(expr, effectiveProxy),
 
@@ -556,6 +563,7 @@ export function createRenderScope(
     computeds: {},
     methods: {},
     props: {},
+    proxy: guarded as Record<string, unknown>,
 
     evaluate: (expr: string) =>
       safeEvaluate(expr, guarded as Record<string, unknown>),

@@ -1,11 +1,4 @@
 # @EiderScript.Example.PublicApiFetch
-#
-# Demonstrates fetching data from a public REST API and rendering it.
-# Uses JSONPlaceholder (https://jsonplaceholder.typicode.com) as the
-# data source. Covers loading states, error handling, search filtering,
-# pagination, and detail view via component composition.
-#
-# component:
 
 name: PublicApiFetchExample
 
@@ -31,9 +24,9 @@ components:
           :class: "{ 'spinner-sm': size === 'sm', 'spinner-md': size === 'md', 'spinner-lg': size === 'lg' }"
         children:
           - div:
-              class: "spinner-animation"
+              class: "spinner-animation border-t-slate-900 border-slate-200"
           - p:
-              class: "spinner-message"
+              class: "spinner-message text-slate-500"
               text: "{{ message }}"
 
   ErrorBanner:
@@ -76,7 +69,7 @@ components:
 
   SearchBar:
     props:
-      value:
+      modelValue:
         type: string
         default: ""
       placeholder:
@@ -90,15 +83,14 @@ components:
         default: 0
 
     emits:
-      - input
+      - "update:modelValue"
       - clear
 
     methods:
       handleInput: |
-        emit('input', { target: { value: $event } })
-
+        emit('update:modelValue', $event.target.value)
       handleClear: |
-        emit('input', { target: { value: '' } })
+        emit('update:modelValue', '')
         emit('clear')
 
     template:
@@ -112,19 +104,19 @@ components:
                 - input:
                     type: "text"
                     class: "search-input"
-                    style: "flex: 1; padding: 0.75rem 1rem; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 1rem; outline: none; transition: border-color 0.2s;"
+                    style: "flex: 1; padding: 0.75rem 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1rem; outline: none; transition: border-color 0.2s; color: #0f172a;"
                     attrs:
-                      :value: "value"
+                      :value: "modelValue"
                       :placeholder: "placeholder"
-                    "@input": "handleInput($event.target.value)"
+                    "@input": "handleInput"
                 - button:
-                    v-if: "value.length > 0"
-                    style: "padding: 0.75rem 1rem; background: #6b7280; color: white; border: none; border-radius: 8px; cursor: pointer;"
+                    v-if: "modelValue.length > 0"
+                    style: "padding: 0.75rem 1rem; background: #64748b; color: white; border: none; border-radius: 8px; cursor: pointer;"
                     "@click": "handleClear"
                     text: "Clear"
           - p:
-              v-if: "value.length > 0"
-              style: "margin: 0; font-size: 0.875rem; color: #6b7280;"
+              v-if: "modelValue.length > 0"
+              style: "margin: 0; font-size: 0.875rem; color: #64748b;"
               text: "Showing {{ resultCount }} of {{ totalCount }} results"
 
   UserCard:
@@ -133,8 +125,8 @@ components:
         type: object
         default: {}
       isSelected:
-        type: boolean
-        default: false
+        type: string
+        default: "false"
 
     emits:
       - select
@@ -143,17 +135,16 @@ components:
     methods:
       handleSelect: |
         emit('select', user)
-
       handleViewPosts: |
         emit('viewPosts', user)
 
     template:
       div:
         class: "user-card"
-        style: "padding: 1.25rem; border: 2px solid #e5e7eb; border-radius: 12px; cursor: pointer; transition: all 0.2s;"
+        style: "padding: 1.25rem; border: 2px solid #e2e8f0; border-radius: 12px; cursor: pointer; transition: all 0.2s;"
         attrs:
-          :class: "{ 'user-card--selected': isSelected }"
-          :style: "isSelected ? 'border-color: #3b82f6; background: #eff6ff; box-shadow: 0 4px 12px rgba(59,130,246,0.15);' : 'background: white;'"
+          :class: "{ 'user-card--selected': isSelected === 'true' }"
+          :style: "isSelected === 'true' ? 'border-color: #0f172a; background: #f8fafc; box-shadow: 0 4px 12px rgba(15,23,42,0.1);' : 'background: white;'"
         "@click": "handleSelect"
         children:
           - div:
@@ -161,18 +152,18 @@ components:
               children:
                 - div:
                     class: "avatar"
-                    style: "width: 48px; height: 48px; border-radius: 50%; background: #3b82f6; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.25rem;"
+                    style: "width: 48px; height: 48px; border-radius: 50%; background: #0f172a; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.25rem;"
                     text: "{{ user.name ? user.name.charAt(0).toUpperCase() : '?' }}"
                 - div:
                     children:
                       - h3:
-                          style: "margin: 0; font-size: 1.1rem; color: #1f2937;"
+                          style: "margin: 0; font-size: 1.1rem; color: #0f172a;"
                           text: "{{ user.name }}"
                       - p:
-                          style: "margin: 0; font-size: 0.875rem; color: #6b7280;"
+                          style: "margin: 0; font-size: 0.875rem; color: #64748b;"
                           text: "@{{ user.username }}"
           - div:
-              style: "display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.875rem; color: #4b5563;"
+              style: "display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.875rem; color: #475569;"
               children:
                 - p:
                     style: "margin: 0;"
@@ -190,15 +181,15 @@ components:
               style: "margin-top: 0.75rem; display: flex; gap: 0.5rem;"
               children:
                 - button:
-                    style: "padding: 0.4rem 0.75rem; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.8rem;"
+                    style: "padding: 0.4rem 0.75rem; background: #0f172a; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.8rem;"
                     "@click.stop": "handleViewPosts"
                     text: "View Posts"
 
   PostList:
     props:
       userId:
-        type: number
-        default: 0
+        type: string
+        default: "0"
       userName:
         type: string
         default: ""
@@ -237,7 +228,6 @@ components:
         } finally {
           isLoading = false
         }
-
       async fetchComments: |
         const postId = $event
         if (expandedPostId === postId) {
@@ -259,19 +249,10 @@ components:
         } finally {
           commentsLoading = false
         }
-            throw new Error('Failed to fetch comments')
-          }
-          comments = await response.json()
-        } catch (err) {
-          console.error(err)
-        } finally {
-          commentsLoading = false
-        }
-
       handleClose: |
         emit('close')
 
-    mounted: |
+    onMounted: |
       if (userId > 0) {
         fetchPosts()
       }
@@ -279,37 +260,33 @@ components:
     template:
       div:
         class: "post-list-panel"
-        style: "background: white; border: 2px solid #e5e7eb; border-radius: 12px; padding: 1.5rem; margin-top: 1.5rem;"
+        style: "background: white; border: 2px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; margin-top: 1.5rem;"
         children:
           - div:
-              style: "display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #e5e7eb;"
+              style: "display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #e2e8f0;"
               children:
                 - h3:
-                    style: "margin: 0; color: #1f2937;"
+                    style: "margin: 0; color: #0f172a;"
                     text: "Posts by {{ userName }}"
                 - button:
                     style: "padding: 0.4rem 0.75rem; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer;"
                     "@click": "handleClose"
                     text: "Close"
-
           - LoadingSpinner:
               v-if: "isLoading"
               attrs:
                 message: "Fetching posts..."
                 size: "sm"
-
           - ErrorBanner:
               v-if: "errorMessage.length > 0 && !isLoading"
               attrs:
                 title: "Could not load posts"
                 :message: "errorMessage"
               "@retry": "fetchPosts"
-
           - p:
               v-if: "!isLoading && errorMessage.length === 0 && posts.length === 0"
-              style: "text-align: center; color: #9ca3af; padding: 2rem 0;"
+              style: "text-align: center; color: #94a3b8; padding: 2rem 0;"
               text: "No posts found for this user."
-
           - div:
               v-if: "!isLoading && posts.length > 0"
               style: "display: flex; flex-direction: column; gap: 1rem; max-height: 500px; overflow-y: auto;"
@@ -317,22 +294,21 @@ components:
                 - div:
                     v-for: "post in posts"
                     :key: "post.id"
-                    style: "padding: 1rem; border: 1px solid #e5e7eb; border-radius: 8px; background: #fafafa;"
+                    style: "padding: 1rem; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc;"
                     children:
                       - h4:
-                          style: "margin: 0 0 0.5rem 0; color: #1f2937; text-transform: capitalize;"
+                          style: "margin: 0 0 0.5rem 0; color: #0f172a; text-transform: capitalize;"
                           text: "{{ post.title }}"
                       - p:
-                          style: "margin: 0 0 0.75rem 0; color: #4b5563; font-size: 0.9rem; line-height: 1.5;"
+                          style: "margin: 0 0 0.75rem 0; color: #475569; font-size: 0.9rem; line-height: 1.5;"
                           text: "{{ post.body }}"
                       - button:
-                          style: "padding: 0.3rem 0.6rem; background: #8b5cf6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem;"
+                          style: "padding: 0.3rem 0.6rem; background: #0f172a; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem;"
                           "@click": "fetchComments(post.id)"
                           text: "{{ expandedPostId === post.id ? 'Hide Comments' : 'Show Comments' }}"
-
                       - div:
                           v-if: "expandedPostId === post.id"
-                          style: "margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #e5e7eb;"
+                          style: "margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #e2e8f0;"
                           children:
                             - LoadingSpinner:
                                 v-if: "commentsLoading"
@@ -344,18 +320,18 @@ components:
                                 style: "display: flex; flex-direction: column; gap: 0.5rem;"
                                 children:
                                   - p:
-                                      style: "margin: 0; font-weight: 600; color: #6b7280; font-size: 0.85rem;"
+                                      style: "margin: 0; font-weight: 600; color: #64748b; font-size: 0.85rem;"
                                       text: "{{ comments.length }} Comments"
                                   - div:
                                       v-for: "comment in comments"
                                       :key: "comment.id"
-                                      style: "padding: 0.75rem; background: white; border: 1px solid #e5e7eb; border-radius: 6px;"
+                                      style: "padding: 0.75rem; background: white; border: 1px solid #e2e8f0; border-radius: 6px;"
                                       children:
                                         - p:
-                                            style: "margin: 0 0 0.25rem 0; font-weight: 600; font-size: 0.8rem; color: #3b82f6;"
+                                            style: "margin: 0 0 0.25rem 0; font-weight: 600; font-size: 0.8rem; color: #0f172a;"
                                             text: "{{ comment.email }}"
                                         - p:
-                                            style: "margin: 0; font-size: 0.85rem; color: #4b5563;"
+                                            style: "margin: 0; font-size: 0.85rem; color: #475569;"
                                             text: "{{ comment.body }}"
 
   ApiFetchApp:
@@ -364,6 +340,8 @@ components:
       isLoading: false
       errorMessage: ""
       searchQuery: ""
+      searchQueryDebounced: ""
+      searchDebounceTimerId: null
       selectedUser: null
       showPosts: false
       postsUser: null
@@ -372,10 +350,10 @@ components:
 
     computeds:
       filteredUsers: |
-        if (!searchQuery || searchQuery.trim().length === 0) {
+        if (!searchQueryDebounced || searchQueryDebounced.trim().length === 0) {
           return users
         }
-        const q = searchQuery.toLowerCase().trim()
+        const q = searchQueryDebounced.toLowerCase().trim()
         return users.filter(u =>
           u.name.toLowerCase().includes(q) ||
           u.username.toLowerCase().includes(q) ||
@@ -383,25 +361,26 @@ components:
           (u.company && u.company.name.toLowerCase().includes(q)) ||
           (u.address && u.address.city.toLowerCase().includes(q))
         )
-
       totalPages: |
         Math.ceil(filteredUsers.length / pageSize) || 1
-
       paginatedUsers: |
         const start = (currentPage - 1) * pageSize
         return filteredUsers.slice(start, start + pageSize)
-
       hasPreviousPage: |
         currentPage > 1
-
       hasNextPage: |
         currentPage < totalPages
 
     watch:
-      searchQuery: |
-        currentPage = 1
+      searchQuery: "currentPage = 1; scheduleSearchDebounce()"
 
     methods:
+      scheduleSearchDebounce: |
+        if (searchDebounceTimerId != null) clearTimeout(searchDebounceTimerId)
+        searchDebounceTimerId = setTimeout(() => { flushSearchDebounce() }, 180)
+      flushSearchDebounce: |
+        searchQueryDebounced = searchQuery
+        searchDebounceTimerId = null
       async fetchUsers: |
         isLoading = true
         errorMessage = ''
@@ -421,71 +400,59 @@ components:
         } finally {
           isLoading = false
         }
-
       handleSelectUser: |
         const user = $event
         selectedUser = (selectedUser && selectedUser.id === user.id) ? null : user
-
       handleViewPosts: |
         const user = $event
         postsUser = user
         showPosts = true
-
       handleClosePosts: |
         showPosts = false
         postsUser = null
-
       nextPage: |
         if (currentPage < totalPages) {
           currentPage = currentPage + 1
         }
-
       previousPage: |
         if (currentPage > 1) {
           currentPage = currentPage - 1
         }
-
       handleRetry: |
         fetchUsers()
 
-    mounted: |
-      fetchUsers()
-
     template:
       div:
-        class: "api-fetch-app"
+        class: "api-fetch-app border border-slate-200 rounded-xl bg-slate-50"
         style: "max-width: 900px; margin: 0 auto; padding: 2rem; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;"
         children:
           - div:
               style: "text-align: center; margin-bottom: 2rem;"
               children:
                 - h1:
-                    style: "margin: 0 0 0.5rem 0; font-size: 2rem; color: #1f2937;"
+                    style: "margin: 0 0 0.5rem 0; font-size: 2rem; color: #0f172a;"
                     text: "Public API Explorer"
                 - p:
-                    style: "margin: 0; color: #6b7280; font-size: 1.05rem;"
+                    style: "margin: 0; color: #64748b; font-size: 1.05rem;"
                     text: "Fetching and rendering data from JSONPlaceholder API"
                 - div:
                     style: "margin-top: 1rem;"
                     children:
                       - button:
-                          style: "padding: 0.6rem 1.25rem; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.95rem; font-weight: 500;"
+                          style: "padding: 0.6rem 1.25rem; background: #0f172a; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.95rem; font-weight: 500;"
                           "@click": "fetchUsers"
                           text: "Refresh Data"
-
           - LoadingSpinner:
               v-if: "isLoading"
               attrs:
                 message: "Fetching users from API..."
                 size: "lg"
-
           - ErrorBanner:
               v-if: "errorMessage.length > 0 && !isLoading"
               attrs:
                 title: "Failed to fetch users"
                 :message: "errorMessage"
               "@retry": "handleRetry"
-
           - div:
               v-if: "!isLoading && errorMessage.length === 0 && users.length > 0"
               children:
@@ -495,48 +462,44 @@ components:
                       placeholder: "Search by name, username, email, company, or city..."
                       :resultCount: "filteredUsers.length"
                       :totalCount: "users.length"
-
                 - div:
                     v-if: "filteredUsers.length === 0"
-                    style: "text-align: center; padding: 3rem 1rem; color: #9ca3af;"
+                    style: "text-align: center; padding: 3rem 1rem; color: #94a3b8;"
                     children:
                       - p:
                           style: "margin: 0.5rem 0 0 0; font-size: 1.1rem;"
                           text: 'No users match "{{ searchQuery }}"'
-
                 - div:
                     v-if: "filteredUsers.length > 0"
                     style: "display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 1rem;"
                     children:
-                      - UserCard:
-                          v-for: "user in paginatedUsers"
-                          :key: "user.id"
-                          attrs:
-                            :user: "user"
-                            :isSelected: "selectedUser && selectedUser.id === user.id"
-                          "@select": "handleSelectUser"
-                          "@viewPosts": "handleViewPosts"
-
+                        - UserCard:
+                            v-for: "user in paginatedUsers"
+                            :key: "user.id"
+                            attrs:
+                              :user: "user"
+                              :isSelected: "String(selectedUser && selectedUser.id === user.id)"
+                            "@select": "handleSelectUser"
+                            "@viewPosts": "handleViewPosts"
                 - div:
                     v-if: "totalPages > 1"
-                    style: "display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e5e7eb;"
+                    style: "display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #e2e8f0;"
                     children:
                       - button:
-                          style: "padding: 0.5rem 1rem; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer; background: white;"
+                          style: "padding: 0.5rem 1rem; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; background: white; color: #0f172a;"
                           attrs:
                             :disabled: "!hasPreviousPage"
                           "@click": "previousPage"
                           text: "Previous"
                       - span:
-                          style: "font-size: 0.9rem; color: #4b5563;"
+                          style: "font-size: 0.9rem; color: #475569;"
                           text: "Page {{ currentPage }} of {{ totalPages }}"
                       - button:
-                          style: "padding: 0.5rem 1rem; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer; background: white;"
+                          style: "padding: 0.5rem 1rem; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; background: white; color: #0f172a;"
                           attrs:
                             :disabled: "!hasNextPage"
                           "@click": "nextPage"
                           text: "Next"
-
                 - div:
                     v-if: "selectedUser"
                     style: "margin-top: 1.5rem; padding: 1.25rem; background: #f0fdf4; border: 2px solid #86efac; border-radius: 12px;"
@@ -568,20 +531,18 @@ components:
                             - p:
                                 style: "margin: 0; grid-column: span 2;"
                                 text: "Address: {{ selectedUser.address ? [selectedUser.address.street, selectedUser.address.suite, selectedUser.address.city, selectedUser.address.zipcode].join(', ') : 'N/A' }}"
-
                 - PostList:
                     v-if: "showPosts && postsUser"
                     attrs:
-                      :userId: "postsUser.id"
+                      :userId: "String(postsUser.id)"
                       :userName: "postsUser.name"
                     "@close": "handleClosePosts"
-
           - div:
-              style: "margin-top: 2.5rem; padding: 1.25rem; background: #1f2937; border-radius: 12px; color: #e5e7eb;"
+              style: "margin-top: 2.5rem; padding: 1.25rem; background: #0f172a; border-radius: 12px; color: #f8fafc;"
               children:
                 - h4:
-                    style: "margin: 0 0 0.75rem 0; color: #9ca3af; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;"
+                    style: "margin: 0 0 0.75rem 0; color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;"
                     text: "Debug - Live Application State"
                 - pre:
-                    style: "margin: 0; font-size: 0.8rem; color: #a5f3fc; overflow-x: auto; white-space: pre-wrap;"
-                    text: "{{ {\n  totalUsers: users.length,\n  filteredCount: filteredUsers.length,\n  searchQuery: searchQuery,\n  currentPage: currentPage,\n  totalPages: totalPages,\n  selectedUserId: selectedUser ? selectedUser.id : null,\n  showPosts: showPosts,\n  postsUserId: postsUser ? postsUser.id : null,\n  isLoading: isLoading,\n  hasError: errorMessage.length > 0\n} | json }}"
+                    style: "margin: 0; font-size: 0.8rem; color: #e2e8f0; overflow-x: auto; white-space: pre-wrap;"
+                    text: "Users: {{ users.length }} | Filtered: {{ filteredUsers.length }} | Page: {{ currentPage }}/{{ totalPages }} | Loading: {{ isLoading }} | Query: {{ searchQuery || '(empty)' }}"
