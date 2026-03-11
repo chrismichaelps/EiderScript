@@ -1,0 +1,5 @@
+@import "tailwindcss";
+
+/* Scan EiderScript examples for Tailwind classes at build-time */
+@source "../../examples/**/*.eider.yaml";
+
