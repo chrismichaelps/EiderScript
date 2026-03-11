@@ -14,9 +14,8 @@ This directory serves as the **Living Integration Suite** for EiderScript's YAML
 | `todo-app`       | [`todo-app.eider.yaml`](./todo-app.eider.yaml)             | `v-for`, `v-if`, `v-model`, `v-show`, computed filters      |
 | `auth-form`      | [`auth-form.eider.yaml`](./auth-form.eider.yaml)           | `v-model`, `v-if` error states, validation signals          |
 | `theme-toggle`   | [`theme-toggle.eider.yaml`](./theme-toggle.eider.yaml)     | Tailwind `dark:` variants, boolean signal toggle            |
-| `product-card`   | [`product-card.eider.yaml`](./product-card.eider.yaml)     | `v-bind`, `:class`, hover states, badge conditionals        |
+| `theme-toggle`   | [`theme-toggle.eider.yaml`](./theme-toggle.eider.yaml)     | Tailwind `dark:` variants, boolean signal toggle            |
 | `modal`          | [`modal.eider.yaml`](./modal.eider.yaml)                   | `v-show`, `v-if`, `group`/`peer` Tailwind, animation        |
-| `dashboard`      | [`dashboard.eider.yaml`](./dashboard.eider.yaml)           | Full layout: sidebar nav, stats cards, data table, `v-for`  |
 | `static-content` | [`static-content.eider.yaml`](./static-content.eider.yaml) | `v-once`, `v-pre`, `v-memo`, `v-cloak`, combined directives |
 
 ---
