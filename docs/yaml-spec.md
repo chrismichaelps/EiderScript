@@ -31,7 +31,7 @@ The root orchestration layer defining navigation and global dependencies.
 | `name` | `string` | **Required.** Root application namespace. |
 | `router.routes` | `Route[]` | **Required.** Array of route mapping descriptors. |
 | `router.scrollBehavior` | `string` | Managed scroll strategy (`top` or `preserve`). |
-| `global.plugins` | `string[]` | Registry of external Vue plugins (Pinia/Router are internal). |
+| `global.plugins` | `string[]` | Registry of external Vue plugins (Router is internal). |
 | `components` | `Component[]` | Inline component manifests (higher priority than external). |
 | `template` | `EiderAST` | Optional root layout manifest. |
 
@@ -44,10 +44,5 @@ The root orchestration layer defining navigation and global dependencies.
 
 ---
 
-## **3. Store Manifest (`kind: store`)**
-Global state management powered by Pinia orchestration.
-
-- **`id`**: Unique store identifier.
-- **`state`**: Initial reactive state tree.
-- **`actions`**: Mutative logic or procedural workflows.
-- **`getters`**: Computed state derivations from the global store.
+> [!IMPORTANT]
+> **Store Manifest (`kind: store`)**: The current version of EiderScript does not officially support or map the global store system (Pinia). This functionality is slated for the future roadmap. Implementation of cross-component state should currently rely on `provide/inject` or external Vue plugins.
