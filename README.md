@@ -32,8 +32,11 @@ Comprehensive technical specifications and guides are available in the [docs](do
 > [!IMPORTANT]
 > Vuejs State Management/Global Store mapping (Pinia) is currently not supported in this version and is part of the future development roadmap.
 
----
+### Playground Screenshot
 
+<img src="public/playground-screenshot.png" alt="EiderScript Playground Screenshot" />
+
+---
 
 ### **:busts_in_silhouette: Credits**
 
