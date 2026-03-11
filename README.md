@@ -7,11 +7,31 @@
 </p>
 
 <p align="center">
-EiderScript is a YAML-based framework that lets you build Vue 3 apps by defining components, Pinia stores, and Vue Router routes entirely in YAML, which compiles to standard Vue 3 code with full reactivity and internal Effect.ts handling for async operations.
+EiderScript is a YAML-based framework that lets you build Vue 3 apps by defining components and Vue Router routes entirely in YAML, which compiles to standard Vue 3 code with full reactivity and internal Effect.ts handling for async operations.
 </p>
 
->[!NOTE]
+> [!NOTE]
 > **Experimental project under development**
+
+---
+
+### **Playground**
+
+Explore EiderScript interactive examples and live compilation in the [Playground](./playground/).
+
+---
+
+## **Documentation**
+
+Comprehensive technical specifications and guides are available in the [docs](docs/) directory:
+
+- [**API Reference**](docs/api-reference.md): High-level JavaScript/TypeScript entry points and SSR hydration.
+- [**YAML Manifest Specification**](docs/yaml-spec.md): Schema definitions for App and Component documents.
+- [**Template Engine (EiderAST)**](docs/template-engine.md): Declarative UI syntax, directives, and CSS shorthands.
+
+> [!IMPORTANT]
+> Vuejs State Management/Global Store mapping (Pinia) is currently not supported in this version and is part of the future development roadmap.
+
 ---
 
 
