@@ -16,7 +16,7 @@ Transforms `AppAST.router.routes` into Vue Router `RouteRecordRaw[]`.
 
 ### R-ROUTER-001: Signature
 ```ts
-compileRouter(ast: AppAST): Effect<Router, CompileError>
+compileRouter(ast: AppAST, resolve: (n: string) => RouteComponent, ssr?: boolean, mem?: boolean): Router | null
 ```
 
 ### R-ROUTER-002: Route Mapping
@@ -28,15 +28,21 @@ Each route entry:
     - path: team
       component: Team
 ```
-→ `{ path: '/about', component: resolveComponent('About'), children: [...] }`
+→ `{ path: '/about', component: resolveComponent('About'), name: 'about', meta: {...}, props: true/expr/object, beforeEnter: guardFn }`
 
 ### R-ROUTER-003: resolveComponent
 `component` string → `resolveComponent(name)` call (Vue global component resolution)
 Typed as `RouteComponent` (not `string`)
 
-### R-ROUTER-004: Nested Routes
-Children are recursively compiled — unlimited nesting depth.
-Children array omitted when empty to avoid RouteRecordRaw type union conflicts.
+Children are recursively compiled. Array omitted if empty.
+Names moved to first child if parent is purely a container with named redirect.
 
-### R-ROUTER-005: createRouter Output
-Returns `createRouter({ history: createWebHistory(), routes })`
+### R-ROUTER-005: Scroll Behavior
+`scrollBehavior` mapping: `top` → `{ top: 0, behavior: 'smooth' }`, `preserve` → `savedPosition`.
+
+### R-ROUTER-006: Catch-All Redirection
+In `memoryHistory`, adds `/:pathMatch(.*)*` redirecting to first real route if no root exists.
+Prevents duplication if catch-all already defined in AST.
+
+### R-ROUTER-007: Output
+Returns `createRouter({ history, routes, scrollBehavior })`

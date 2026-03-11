@@ -21,6 +21,7 @@ createScope(
   signals: Record<string, unknown>,
   computeds: Record<string, string>,
   methods: Record<string, string>,
+  options?: { inject?: Record<string, unknown> }
 ): EiderScope
 ```
 
@@ -40,9 +41,9 @@ Each signals entry → `ref(value)`. Values are Vue-reactive.
 Each computeds entry → `computed(() => exprParser.evaluate(expr, proxyScope))`
 Evaluation scope merges props + signal values + method values.
 
-### R-SCOPE-005: evaluate() Safety
-`evaluate(expr)` wraps `exprParser.parse(expr).evaluate(scope)` in try/catch.
-Returns `undefined` (never throws) on any evaluation error.
+### R-SCOPE-005: evaluate() Strictness
+`evaluate(expr)` evaluates via `jsFallbackEvaluate` using explicit function signatures (no `Function` type).
+Errors are caught internally; returns `undefined` on failure.
 
 ### R-SCOPE-006: Scope Proxy
 The evaluation scope is a flat proxy: `{ ...props, ...signalValues, ...methodFns }`

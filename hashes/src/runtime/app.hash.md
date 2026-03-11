@@ -17,7 +17,7 @@ Orchestrates the full EiderApp lifecycle: parse YAML → compile → mount Vue a
 
 ### R-APP-001: createEiderApp Signature
 ```ts
-createEiderApp(yaml: string, options?: { ssr?: boolean }): Effect<App, ParseError | CompileError>
+createEiderApp(input: EiderAppInput): Effect<EiderApp, RuntimeError>
 ```
 
 ### R-APP-002: Pipeline
