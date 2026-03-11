@@ -1,3 +1,6 @@
+# @EiderScript.Example.Modal
+%YAML 1.2
+---
 name: Modal
 global: {}
 router:

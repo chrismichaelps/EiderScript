@@ -1,7 +1,6 @@
-# Component synchronization with v-model. 
-# Custom components using v-model should declare a modelValue prop and 
-# emit update:modelValue with the new value.
-
+# @EiderScript.Example.ComponentSync
+%YAML 1.2
+---
 name: ComponentSyncExample
 
 router:

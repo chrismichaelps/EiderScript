@@ -1,3 +1,6 @@
+# @EiderScript.Example.TodoApp
+%YAML 1.2
+---
 name: TodoApp
 global: {}
 router:

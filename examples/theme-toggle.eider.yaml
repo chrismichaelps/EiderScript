@@ -1,3 +1,6 @@
+# @EiderScript.Example.ThemeToggle
+%YAML 1.2
+---
 name: ThemeToggle
 global: {}
 router:

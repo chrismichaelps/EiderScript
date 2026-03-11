@@ -1,3 +1,6 @@
+# @EiderScript.Example.Counter
+%YAML 1.2
+---
 name: CounterApp
 global: {}
 router:

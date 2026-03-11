@@ -1,3 +1,6 @@
+# @EiderScript.Example.AuthForm
+%YAML 1.2
+---
 name: AuthForm
 global: {}
 router:

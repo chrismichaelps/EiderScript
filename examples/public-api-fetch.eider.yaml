@@ -1,5 +1,6 @@
 # @EiderScript.Example.PublicApiFetch
-
+%YAML 1.2
+---
 name: PublicApiFetchExample
 
 router:
