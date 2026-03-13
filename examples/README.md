@@ -38,17 +38,17 @@ Every space-delimited token on a YAML key is parsed by the **Template Compiler**
 | `#id`                  | `id="id"`                          | `@root/hashes/src/compiler/template.hash.md`  |
 | `@event=method`        | `onEvent` VNode prop               | `@root/hashes/src/directives/v-model.hash.md` |
 | `:prop=expr`           | Dynamic binding via `compileVBind` | `@root/hashes/src/directives/v-bind.hash.md`  |
-| `v-if=expr`            | `compileVIf` → conditional VNode   | `@root/hashes/src/directives/v-if.hash.md`    |
+| `v-if=expr`            | `compileVIf` to conditional VNode   | `@root/hashes/src/directives/v-if.hash.md`    |
 | `v-else-if=expr`       | `compileVIfChain` branch           | `@root/hashes/src/directives/v-if.hash.md`    |
 | `v-else`               | `compileVIfChain` fallback         | `@root/hashes/src/directives/v-if.hash.md`    |
-| `v-for="item in list"` | `compileVFor` → keyed list         | `@root/hashes/src/directives/v-for.hash.md`   |
-| `v-model=signal`       | `compileVModel` → two-way bind     | `@root/hashes/src/directives/v-model.hash.md` |
-| `v-show=expr`          | `compileVShow` → `display:none`    | `@root/hashes/src/directives/v-show.hash.md`  |
-| `v-bind=obj`           | `compileVBindSpread` → object      | `@root/hashes/src/directives/v-bind.hash.md`  |
-| `v-once`               | `compileVOnce` → static render     | `@root/hashes/src/directives/v-once.hash.md`  |
-| `v-pre`                | `compileVPre` → raw content        | `@root/hashes/src/directives/v-pre.hash.md`   |
-| `v-memo=deps`          | `compileVMemo` → skip re-render    | `@root/hashes/src/directives/v-memo.hash.md`  |
-| `v-cloak`              | `compileVCloak` → remove post      | `@root/hashes/src/directives/v-cloak.hash.md` |
+| `v-for="item in list"` | `compileVFor` to keyed list         | `@root/hashes/src/directives/v-for.hash.md`   |
+| `v-model=signal`       | `compileVModel` to two-way bind     | `@root/hashes/src/directives/v-model.hash.md` |
+| `v-show=expr`          | `compileVShow` to `display:none`    | `@root/hashes/src/directives/v-show.hash.md`  |
+| `v-bind=obj`           | `compileVBindSpread` to object      | `@root/hashes/src/directives/v-bind.hash.md`  |
+| `v-once`               | `compileVOnce` to static render     | `@root/hashes/src/directives/v-once.hash.md`  |
+| `v-pre`                | `compileVPre` to raw content        | `@root/hashes/src/directives/v-pre.hash.md`   |
+| `v-memo=deps`          | `compileVMemo` to skip re-render    | `@root/hashes/src/directives/v-memo.hash.md`  |
+| `v-cloak`              | `compileVCloak` to remove post      | `@root/hashes/src/directives/v-cloak.hash.md` |
 
 ### Interpolation & Filters
 
@@ -96,7 +96,7 @@ template:
 | Law                    | Enforcement                                                                                                                            |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | **Export Law**         | Components export a single `compileComponent()` Effect pipeline. No naked VNode leakage.                                               |
-| **Transformation Law** | YAML → `EiderComponent` mapping is the sole responsibility of `yaml.parser.ts`.                                                        |
+| **Transformation Law** | YAML to `EiderComponent` mapping is the sole responsibility of `yaml.parser.ts`.                                                        |
 | **Propagation Law**    | Parser errors bubble through `EiderParseError`; compiler errors through `EiderCompileError`. Raw errors do not cross shard boundaries. |
 | **Path Law**           | All `hash_reference` and `parent_bridge` paths are `@root`-relative. Absolute OS paths are prohibited.                                 |
 

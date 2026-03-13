@@ -116,7 +116,7 @@ components:
               attrs:
                 to: /about
                 class: inline-flex items-center px-6 py-3 border border-black text-base font-medium rounded-full text-white bg-black hover:bg-gray-800 transition
-              text: About →
+              text: About
           - RouterLink:
               attrs:
                 to: /protected

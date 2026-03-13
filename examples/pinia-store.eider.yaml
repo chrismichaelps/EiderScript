@@ -1,0 +1,600 @@
+# Pinia state management showcase
+# Demonstrates stores, state, getters, actions, watchers, and persistence.
+%YAML 1.2
+---
+# user-session store
+id: user-session
+
+# State
+state:
+  user: null          # { id, name, email, avatar } | null
+  token: ""           # JWT bearer token
+  loading: false
+  error: null
+
+# Getters
+getters:
+  isAuthenticated: "token !== ''"
+  displayName: "user ? user.name : 'Guest'"
+  userInitials: "user ? user.name.split(' ').map(w => w[0]).join('').toUpperCase() : '?'"
+  hasError: "error !== null"
+
+# Actions
+actions:
+  # String shorthand — simple one-liners
+  clearError: "error = null"
+  logout: "token = ''; user = null; error = null"
+
+  # Object form — multi-step async with full error handling
+  login:
+    async: true
+    body: |
+      loading = true
+      error = null
+      try {
+        const res = await fetch('https://jsonplaceholder.typicode.com/users/1')
+        if (!res.ok) throw new Error('Login failed: ' + res.status)
+        const data = await res.json()
+        console.log('[user-session] login:fetch:success:', data)
+        // Ensure globals are found
+        if (typeof window !== 'undefined') window.console.log('--- GLOBAL LOGIN SUCCESS ---', data.name)
+        user = { id: data.id, name: data.name, email: data.email, avatar: null }
+        token = 'mock-jwt-token-' + data.id
+      } catch (e) {
+        console.error('[user-session] login:error:', e)
+        if (typeof window !== 'undefined') window.console.error('--- GLOBAL LOGIN ERROR ---', e)
+        error = e.message
+      } finally {
+        loading = false
+      }
+
+  refreshProfile:
+    async: true
+    body: |
+      if (!token) return
+      loading = true
+      try {
+        const res = await fetch('https://jsonplaceholder.typicode.com/users/1')
+        if (!res.ok) throw new Error('Refresh failed')
+        const data = await res.json()
+        user = { ...user, name: data.name, email: data.email }
+      } catch (e) {
+        error = e.message
+      } finally {
+        loading = false
+      }
+
+# Watchers
+watch:
+  token:
+    handler: "console.log('[user-session] Auth token', token ? 'acquired' : 'cleared')"
+    immediate: false
+  error:
+    handler: "error ? console.warn('[user-session] Error:', error) : null"
+    immediate: false
+
+# Plugins
+plugins:
+  - pinia-plugin-persistedstate
+
+# Persistence
+persist:
+  key: user-session
+  storage: localStorage
+  paths:
+    - token
+    - user
+
+---
+# cart store
+id: cart
+
+# State
+state:
+  items: []           # [{ id, name, price, qty, category }]
+  couponCode: ""
+  couponDiscount: 0   # percentage 0–100
+  couponError: null
+  checkoutStatus: null  # null | 'pending' | 'success' | 'error'
+  checkoutError: null
+
+# Getters
+getters:
+  itemCount: "items.reduce((sum, i) => sum + i.qty, 0)"
+  isEmpty: "items.length === 0"
+  subtotal: "items.reduce((sum, i) => sum + i.price * i.qty, 0)"
+  discountAmount: "subtotal * (couponDiscount / 100)"
+  total: "subtotal - discountAmount"
+  totalFormatted: "total.toFixed(2)"
+  hasCoupon: "couponDiscount > 0"
+  isCheckingOut: "checkoutStatus === 'pending'"
+  checkoutSuccess: "checkoutStatus === 'success'"
+
+# Actions
+actions:
+  # String shorthand — simple state mutations
+  clearCart: "items = []; couponCode = ''; couponDiscount = 0; couponError = null"
+  clearCoupon: "couponCode = ''; couponDiscount = 0; couponError = null"
+  clearCheckout: "checkoutStatus = null; checkoutError = null"
+
+  # Object form — sync with conditional logic
+  addItem:
+    async: false
+    body: |
+      const existing = items.find(i => i.id === product.id)
+      if (existing) {
+        items = items.map(i => i.id === product.id ? { ...i, qty: i.qty + 1 } : i)
+      } else {
+        items = [...items, { ...product, qty: 1 }]
+      }
+
+  removeItem:
+    async: false
+    body: |
+      items = items.filter(i => i.id !== productId)
+
+  updateQty:
+    async: false
+    body: |
+      if (qty < 1) {
+        items = items.filter(i => i.id !== productId)
+      } else {
+        items = items.map(i => i.id === productId ? { ...i, qty } : i)
+      }
+
+  # Async — coupon validation against a mock API
+  applyCoupon:
+    async: true
+    body: |
+      couponError = null
+      if (!couponCode.trim()) {
+        couponError = 'Please enter a coupon code'
+        return
+      }
+      const COUPONS = { SAVE10: 10, SAVE20: 20, EIDER50: 50 }
+      const discount = COUPONS[couponCode.toUpperCase()]
+      if (discount) {
+        couponDiscount = discount
+      } else {
+        couponError = 'Invalid coupon code: ' + couponCode
+        couponDiscount = 0
+      }
+
+  # Async — full checkout pipeline
+  checkout:
+    async: true
+    body: |
+      if (items.length === 0) return
+      checkoutStatus = 'pending'
+      checkoutError = null
+      try {
+        const payload = {
+          items: items.map(i => ({ id: i.id, qty: i.qty, price: i.price })),
+          total,
+          coupon: couponCode || null
+        }
+        const res = await fetch('https://jsonplaceholder.typicode.com/posts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+        if (!res.ok) throw new Error('Checkout failed: ' + res.status)
+        checkoutStatus = 'success'
+        items = []
+        couponCode = ''
+        couponDiscount = 0
+      } catch (e) {
+        checkoutStatus = 'error'
+        checkoutError = e.message
+      }
+
+# Watchers
+watch:
+  items:
+    handler: "console.log('[cart] Items updated, count:', items.length)"
+    immediate: false
+    deep: true
+  checkoutStatus:
+    handler: "checkoutStatus === 'success' ? console.log('[cart] Checkout complete!') : null"
+    immediate: false
+
+# Persistence
+plugins:
+  - pinia-plugin-persistedstate
+
+persist:
+  key: shopping-cart
+  storage: localStorage
+  paths:
+    - items
+    - couponCode
+    - couponDiscount
+
+---
+# ShoppingApp
+name: ShoppingApp
+global:
+  plugins:
+    - pinia-plugin-persistedstate
+
+router:
+  routes:
+    - path: /
+      component: ShopPage
+    - path: /cart
+      component: CartPage
+
+components:
+  # UserSessionBar
+  UserSessionBar:
+    signals:
+      userStore: null
+
+    onMounted: "userStore = useUserSessionStore()"
+
+    methods:
+      handleLogin:
+        async: true
+        body: |
+          if (!userStore) userStore = useUserSessionStore()
+          await userStore.login()
+      handleLogout: |
+        if (!userStore) userStore = useUserSessionStore()
+        userStore.logout()
+
+    template:
+      div .flex .items-center .justify-between .px-6 .py-3 .bg-slate-900 .text-white:
+        children:
+          - div .flex .items-center .gap-3:
+              children:
+                - span .text-lg .font-bold .tracking-tight: "Shop"
+                - span .text-slate-400 .text-xs .font-mono: "powered by Pinia + EiderScript"
+
+          - div .flex .items-center .gap-4:
+              v-if: "userStore"
+              children:
+                # Authenticated state
+                - div .flex .items-center .gap-3:
+                    v-if: "userStore.isAuthenticated"
+                    children:
+                      - div .flex .flex-col .items-end:
+                          children:
+                            - span .text-xs .text-slate-400: "Welcome back,"
+                            - span .text-sm .font-semibold .text-white: "{{ userStore.user ? userStore.user.name : 'Guest' }}"
+                      - div .w-9 .h-9 .rounded-full .bg-white .text-slate-900 .flex .items-center .justify-center .text-sm .font-bold .shadow-sm .ring-2 .ring-slate-800:
+                          text: "{{ userStore.user ? userStore.user.name.charAt(0) : '?' }}"
+                      - button .text-xs .px-3 .py-1.5 .rounded-lg .bg-slate-800 .hover:bg-slate-700 .text-slate-300 .transition-colors .ml-1:
+                          "@click": handleLogout
+                          text: "Logout"
+                
+                # Guest state
+                - button .text-xs .px-5 .py-2 .rounded-full .bg-white .text-slate-900 .hover:bg-slate-200 .font-bold .transition-all .active:scale-95 .shadow-sm:
+                    v-if: "!userStore.isAuthenticated"
+                    "@click": handleLogin
+                    text: "{{ userStore.loading ? 'Signing in...' : 'Sign In' }}"
+
+  # ProductCard
+  ProductCard:
+    props:
+      product:
+        type: object
+        default: {}
+      cartCount:
+        type: number
+        default: 0
+    signals:
+      added: false
+
+    emits:
+      - add
+      - remove
+
+    methods:
+      handleAdd: |
+        emit('add', product)
+        added = true
+        setTimeout(() => added = false, 2000)
+      handleRemove: "emit('remove', product)"
+
+    template:
+      div .group .flex .flex-col .bg-slate-900 .rounded-2xl .shadow-sm .ring-1 .ring-slate-800 .hover:shadow-lg .transition-all .overflow-hidden:
+        children:
+          - div .h-56 .flex .items-center .justify-center .bg-slate-800 .relative .overflow-hidden:
+              children:
+                - img .absolute .inset-0 .w-full .h-full .object-cover .opacity-60 .group-hover:scale-105 .group-hover:opacity-100 .transition-all .duration-500:
+                    ":src": "product.image || 'https://picsum.photos/seed/' + product.id + '/600/400'"
+                - div .absolute .inset-0 .bg-gradient-to-t .from-slate-900 .to-transparent: ""
+                - span .absolute .bottom-4 .left-4 .text-3xl .font-bold .text-white .tracking-tighter .drop-shadow-lg:
+                    text: "{{ product.name.charAt(0) }}"
+
+          - div .p-5 .flex .flex-col .gap-3:
+              children:
+                - div:
+                    children:
+                      - h3 .font-semibold .text-white .text-base .mb-1: "{{ product.name }}"
+                      - p .text-xs .text-slate-500 .uppercase .tracking-wide: "{{ product.category }}"
+
+                - div .flex .items-center .justify-between:
+                    children:
+                      - span .text-xl .font-bold .text-white: "${{ product.price.toFixed(2) }}"
+                      - div .flex .items-center .gap-1 .bg-slate-800 .rounded-full .px-2 .py-1:
+                          v-if: "cartCount > 0"
+                          children:
+                            - button .w-5 .h-5 .flex .items-center .justify-center .text-slate-500 .hover:text-white .font-bold .transition-colors:
+                                "@click": handleRemove
+                                text: "−"
+                            - span .text-sm .font-semibold .text-slate-300 .w-5 .text-center: "{{ cartCount }}"
+                            - button .w-5 .h-5 .flex .items-center .justify-center .text-slate-500 .hover:text-white .font-bold .transition-colors:
+                                "@click": handleAdd
+                                text: "+"
+
+                - button .w-full .py-2 .rounded-xl .text-sm .font-semibold .transition-all:
+                    ":class": "added ? 'bg-white text-slate-900' : (cartCount > 0 ? 'bg-slate-700 text-white hover:bg-slate-600' : 'bg-white/10 text-white hover:bg-white/20')"
+                    "@click": handleAdd
+                    v-text: "added ? '✓ Added' : (cartCount > 0 ? 'Add Another' : 'Add to Cart')"
+
+  # ShopPage
+  ShopPage:
+    signals:
+      products:
+        - id: 1
+          name: "Wireless Headphones"
+          category: "Electronics"
+          price: 79.99
+          image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&h=400&fit=crop"
+        - id: 2
+          name: "Mechanical Keyboard"
+          category: "Electronics"
+          price: 129.99
+          image: "https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?w=600&h=400&fit=crop"
+        - id: 3
+          name: "Ergonomic Mouse"
+          category: "Electronics"
+          price: 49.99
+          image: "https://images.unsplash.com/photo-1527866959252-deab85ef7d1b?w=600&h=400&fit=crop"
+        - id: 4
+          name: "Standing Desk Mat"
+          category: "Office"
+          price: 34.99
+          image: "https://images.unsplash.com/photo-1598986646516-93e5bd002825?w=600&h=400&fit=crop"
+        - id: 5
+          name: "USB-C Hub"
+          category: "Electronics"
+          price: 59.99
+          image: "https://images.unsplash.com/photo-1544244015-0cd4b3ff2091?w=600&h=400&fit=crop"
+        - id: 6
+          name: "Notebook Set"
+          category: "Stationery"
+          price: 14.99
+          image: "https://images.unsplash.com/photo-1531346878377-a5be20888e57?w=600&h=400&fit=crop"
+        - id: 7
+          name: "Coffee Mug"
+          category: "Kitchen"
+          price: 19.99
+          image: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600&h=400&fit=crop"
+        - id: 8
+          name: "Cable Organizer"
+          category: "Office"
+          price: 9.99
+          image: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=600&h=400&fit=crop"
+      cartStore: null
+
+    onMounted: "cartStore = useCartStore()"
+
+    methods:
+      goToCart: "$router.push('/cart')"
+      getCartCount: |
+        if (!cartStore) cartStore = useCartStore()
+        const item = cartStore.items.find(i => i.id === product.id)
+        return item ? item.qty : 0
+      handleAdd: |
+        if (!cartStore) cartStore = useCartStore()
+        cartStore.addItem(product)
+      handleRemove: |
+        if (!cartStore) cartStore = useCartStore()
+        cartStore.updateQty({ productId: product.id, qty: (cartStore.items.find(i => i.id === product.id)?.qty || 1) - 1 })
+
+    template:
+      div .min-h-screen .bg-white:
+        children:
+          - UserSessionBar: {}
+
+          - div .max-w-6xl .mx-auto .px-6 .py-10:
+              children:
+                - div .flex .items-end .justify-between .mb-8:
+                    children:
+                      - div:
+                          children:
+                            - h1 .text-3xl .font-bold .text-slate-900 .mb-1: "Our Products"
+                            - p .text-slate-500 .text-sm: "{{ products.length }} items in catalog"
+                      - button .relative .inline-flex .items-center .gap-2 .bg-slate-900 .text-white .px-5 .py-2.5 .rounded-xl .font-semibold .text-sm .hover:bg-slate-700 .transition-colors:
+                          "@click": goToCart
+                          v-if: "cartStore"
+                          children:
+                            - span: "View Cart"
+                            - span .bg-white .text-slate-900 .text-xs .font-bold .w-5 .h-5 .rounded-full .flex .items-center .justify-center:
+                                v-if: "cartStore.itemCount > 0"
+                                text: "{{ cartStore.itemCount }}"
+
+                - div .grid .gap-5:
+                    ":style": "'grid-template-columns: repeat(auto-fill, minmax(240px, 1fr))'"
+                    children:
+                      - ProductCard:
+                          v-for: "product in products"
+                          ":key": "product.id"
+                          attrs:
+                            ":product": "product"
+                            ":cartCount": "getCartCount(product)"
+                          "@add": "handleAdd"
+                          "@remove": "handleRemove"
+
+  # CartPage
+  CartPage:
+    signals:
+      cartStore: null
+      inputCoupon: ""
+
+    onMounted: "cartStore = useCartStore()"
+
+    methods:
+      goToShop: "$router.push('/')"
+      handleRemove: "cartStore.removeItem(productId)"
+      handleQtyChange: "cartStore.updateQty({ productId, qty })"
+      handleApplyCoupon: |
+        cartStore.couponCode = inputCoupon
+        cartStore.applyCoupon()
+      handleClearCoupon: |
+        cartStore.clearCoupon()
+        inputCoupon = ""
+      handleClearCart: |
+        cartStore.clearCart()
+        inputCoupon = ""
+      handleCheckout:
+        async: true
+        body: |
+          await cartStore.checkout()
+
+    template:
+      div .min-h-screen .bg-white:
+        children:
+          - UserSessionBar: {}
+
+          - div .max-w-4xl .mx-auto .px-6 .py-10:
+              children:
+
+                # Header
+                - div .flex .items-center .gap-4 .mb-8:
+                    v-if: "cartStore"
+                    children:
+                      - button .text-slate-400 .hover:text-slate-700 .transition-colors:
+                          "@click": goToShop
+                          text: "Back to Shop"
+                      - h1 .text-3xl .font-bold .text-slate-900: "Your Cart"
+
+                # Checkout success
+                - div .text-center .py-20:
+                    v-if: "cartStore && cartStore.checkoutStatus === 'success'"
+                    children:
+                      - div .text-7xl .mb-4: "Order Placed"
+                      - h2 .text-2xl .font-bold .text-slate-900 .mb-2: "Order Placed!"
+                      - p .text-slate-500 .mb-6: "Your order was submitted successfully."
+                      - button .inline-block .px-6 .py-3 .bg-slate-900 .text-white .rounded-xl .font-semibold .hover:bg-slate-700 .transition-colors:
+                          "@click": goToShop
+                          text: "Continue Shopping"
+
+                # Empty cart
+                - div .text-center .py-20:
+                    v-if: "cartStore && cartStore.items.length === 0 && cartStore.checkoutStatus !== 'success'"
+                    children:
+                      - div .text-7xl .mb-4: "Your Cart"
+                      - h2 .text-xl .font-semibold .text-slate-700 .mb-2: "Your cart is empty"
+                      - p .text-slate-400 .mb-6: "Add some products to get started."
+                      - button .inline-block .px-6 .py-3 .bg-slate-900 .text-white .rounded-xl .font-semibold .hover:bg-slate-700 .transition-colors:
+                          "@click": goToShop
+                          text: "Browse Products"
+
+                # Cart content
+                - div .grid .gap-6:
+                    v-if: "cartStore && cartStore.items.length > 0 && cartStore.checkoutStatus !== 'success'"
+                    ":style": "'grid-template-columns: 1fr 340px'"
+
+                    children:
+                      # Cart items
+                      - div .flex .flex-col .gap-3:
+                          children:
+                            - div .flex .items-center .gap-4 .bg-slate-900 .rounded-2xl .px-5 .py-4 .ring-1 .ring-slate-800:
+                                v-for: "item in cartStore.items"
+                                ":key": "item.id"
+                                children:
+                                  - div .w-16 .h-16 .rounded-xl .overflow-hidden .flex-shrink-0:
+                                      children:
+                                        - img .w-full .h-full .object-cover:
+                                            ":src": "item.image || 'https://picsum.photos/seed/' + item.id + '/200/200'"
+                                  - div .flex-1 .min-w-0:
+                                      children:
+                                        - p .font-semibold .text-white .truncate: "{{ item.name }}"
+                                        - p .text-xs .text-slate-500: "${{ (item.price || 0).toFixed(2) }} each"
+                                  - div .flex .items-center .gap-2 .bg-slate-100 .rounded-full .px-3 .py-1:
+                                      children:
+                                        - button .w-5 .h-5 .text-slate-500 .hover:text-slate-900 .font-bold .transition-colors:
+                                            "@click": "handleQtyChange({ productId: item.id, qty: item.qty - 1 })"
+                                            text: "−"
+                                        - span .text-sm .font-semibold .text-white .w-5 .text-center: "{{ item.qty }}"
+                                        - button .w-5 .h-5 .text-slate-500 .hover:text-slate-900 .font-bold .transition-colors:
+                                            "@click": "handleQtyChange({ productId: item.id, qty: item.qty + 1 })"
+                                            text: "+"
+                                  - span .w-20 .text-right .font-bold .text-white: 
+                                      text: "${{ ((item.price || 0) * (item.qty || 0)).toFixed(2) }}"
+                                  - button .text-slate-500 .hover:text-white .transition-colors .ml-2:
+                                      "@click": "handleRemove(item.id)"
+                                      text: "✕"
+
+                            - button .text-xs .text-slate-400 .hover:text-slate-900 .transition-colors .text-right:
+                                "@click": "cartStore.clearCart()"
+                                text: "Clear entire cart"
+
+                      # Order summary
+                      - div .flex .flex-col .gap-4:
+
+                          # Coupon
+                          - div .bg-slate-900 .rounded-2xl .p-5 .ring-1 .ring-slate-800:
+                              children:
+                                - h3 .font-semibold .text-white .mb-3: "Coupon Code"
+                                - div .flex .gap-2:
+                                    v-if: "!cartStore.hasCoupon"
+                                    children:
+                                      - input .flex-1 .rounded-xl .bg-slate-800 .border .border-slate-700 .text-white .px-3 .py-2 .text-sm .focus:outline-none .focus:ring-2 .focus:ring-slate-500:
+                                          v-model: inputCoupon
+                                          attrs:
+                                            placeholder: "Try SAVE10, SAVE20, EIDER50"
+                                      - button .px-4 .py-2 .bg-slate-900 .text-white .rounded-xl .text-sm .font-semibold .hover:bg-slate-700 .transition-colors:
+                                          "@click": handleApplyCoupon
+                                          text: "Apply"
+                                - p .text-xs .text-slate-400 .mt-1:
+                                    v-if: "cartStore.couponError"
+                                    text: "{{ cartStore.couponError }}"
+                                - div .flex .items-center .justify-between .bg-slate-800 .rounded-xl .px-4 .py-3:
+                                    v-if: "cartStore.hasCoupon"
+                                    children:
+                                      - div:
+                                          children:
+                                            - p .text-sm .font-semibold .text-white: "Coupon applied!"
+                                            - p .text-xs .text-slate-400: "-${{ (cartStore.discountAmount || 0).toFixed(2) }} off"
+                                      - button .text-xs .text-slate-400 .hover:text-white .font-medium .transition-colors:
+                                          "@click": handleClearCoupon
+                                          text: "Remove"
+
+                          # Totals
+                          - div .bg-slate-900 .rounded-2xl .p-5 .ring-1 .ring-slate-800:
+                              children:
+                                - h3 .font-semibold .text-white .mb-4: "Order Summary"
+                                - div .flex .flex-col .gap-2 .text-sm:
+                                    children:
+                                      - div .flex .justify-between .text-slate-400:
+                                          children:
+                                            - span: "Subtotal"
+                                            - span: "${{ (cartStore.subtotal || 0).toFixed(2) }}"
+                                      - div .flex .justify-between .text-white:
+                                          v-if: "cartStore.hasCoupon"
+                                          children:
+                                            - span: "Coupon discount"
+                                            - span: "−${{ (cartStore.discountAmount || 0).toFixed(2) }}"
+                                      - div .flex .justify-between .text-slate-400:
+                                          children:
+                                            - span: "Shipping"
+                                            - span: "Free"
+                                      - div .h-px .bg-slate-100 .my-1: ""
+                                      - div .flex .justify-between .font-bold .text-white .text-base:
+                                          children:
+                                            - span: "Total"
+                                            - span: "${{ (cartStore.total || 0).toFixed(2) }}"
+
+                                - p .text-xs .text-slate-400 .mt-2:
+                                    v-if: "cartStore.checkoutError"
+                                    text: "{{ cartStore.checkoutError }}"
+
+                                - button .mt-4 .w-full .py-3 .rounded-xl .font-bold .text-sm .transition-all:
+                                    ":class": "cartStore.checkoutStatus === 'pending' ? 'bg-slate-800 text-slate-500 cursor-not-allowed' : 'bg-white text-slate-900 hover:bg-slate-200 active:scale-95'"
+                                    ":disabled": "cartStore.checkoutStatus === 'pending'"
+                                    "@click": handleCheckout
+                                    text: "{{ cartStore.checkoutStatus === 'pending' ? 'Processing...' : 'Checkout — $' + (cartStore.total || 0).toFixed(2) }}"
