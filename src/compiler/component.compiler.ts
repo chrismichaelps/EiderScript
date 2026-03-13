@@ -349,6 +349,7 @@ function buildFallbackScope(
 
 export const compileComponent = (
   ast: ComponentAST,
+  globalStores: Record<string, unknown> = {},
 ): Effect.Effect<Record<string, unknown>, CompileError> =>
   Effect.gen(function* () {
     const constants = yield* Effect.mapError(
@@ -378,12 +379,18 @@ export const compileComponent = (
           const emit = ctx?.emit
           const injected = resolveInjections(ast.inject)
 
+          // Merge injections with stores for composable access
+          const scopeContext = {
+            emit,
+            inject: { ...injected, ...globalStores },
+          }
+
           const scope = createScope(
             props,
             ast.signals ?? {},
             ast.computeds ?? {},
             normalizeMethods(ast.methods),
-            { emit, inject: injected },
+            scopeContext,
             constants.interpolationPrefix,
           )
 
@@ -412,7 +419,7 @@ export const compileComponent = (
         ): ReturnType<typeof compileNode> {
           if (ast.template == null) return null
 
-          // Resolve render scope from proxy (this), setup context (ctx), or static fallback.
+          // Resolve render scope from proxy, setup context, or static fallback.
           const scope = hasRenderContext(this)
             ? createRenderScope(this, constants.interpolationPrefix)
             : hasRenderContext(ctx)

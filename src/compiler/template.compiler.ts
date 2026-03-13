@@ -159,7 +159,7 @@ function resolveTag(tag: string, scope: Scope): string | Component {
   if (BUILT_IN_TAG_MAP[lower]) return BUILT_IN_TAG_MAP[lower]!
   if (HTML_TAGS.has(lower)) return tag
 
-  // Resolve from scope ($components or direct name)
+  // Resolve from scope array or direct name
   try {
     const comp = scope.evaluate(tag)
     if (comp && typeof comp === 'object') return comp as Component
@@ -226,7 +226,7 @@ function parseTagKey(
    * splits into ['v-for=item', 'in', 'list'] tokens, all of which
    * belong to the v-for directive.
    */
-  let partIdx = 1 // skip tag (parts[0])
+  let partIdx = 1 // skip tag
   while (partIdx < parts.length) {
     const part = parts[partIdx]!
     if (part.startsWith('@')) {
@@ -253,7 +253,7 @@ function parseTagKey(
       // resulting in tokens: ['v-for=item', 'in', 'list']
       // with a full expression of: 'item in list'
       // Consume the current token and then look ahead for 'in <list>'
-      const iterPart = part.slice(config.dirFor.length + 1) // e.g. 'item' or '(item,idx)'
+      const iterPart = part.slice(config.dirFor.length + 1) // Extract iterator
       let fullExpr = iterPart
       if (parts[partIdx + 1] === 'in' && parts[partIdx + 2] !== undefined) {
         fullExpr = `${iterPart} in ${parts[partIdx + 2]}`
@@ -807,7 +807,7 @@ function compileSingleEntry(
   // Discard attrs consumed by parent processing
   if (baseTag === 'attrs') return []
 
-  // Skip orphaned directive/binding keys (invalid tag names).
+  // Skip orphaned directive or binding keys for invalid tag names.
   if (isOrphanedDirectiveKey(baseTag, config)) return []
 
   const { tag, attrs, events, directives } = parseTagKey(key, scope, config)

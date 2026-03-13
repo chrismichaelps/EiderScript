@@ -77,7 +77,7 @@ function splitLogicalOr(expr: string): string[] {
 function normalizeForExprEval(expr: string): string {
   let result = expr.replace(DOT_LENGTH_RE, 'length($1)')
 
-  // Strict equality/inequality to loose (expr-eval only supports == and !=)
+  // Strict equality or inequality to loose
   result = result.replace(/!==/g, '!=')
   result = result.replace(/===/g, '==')
 
@@ -85,8 +85,8 @@ function normalizeForExprEval(expr: string): string {
   result = result.replace(/&&/g, ' and ')
 
   // Prefix logical NOT: convert ! to not
-  // (?<!\w): not preceded by a word char (avoids factorial: n!)
-  // (?!=):   not followed by = (preserves !=)
+  // Not preceded by a word char avoiding factorial
+  // Not followed by equals preserving loose inequality
   result = result.replace(/(?<!\w)!(?!=)/g, ' not ')
 
   const segments = splitLogicalOr(result)
@@ -175,7 +175,7 @@ function safeEvaluate(
   if (!sanitized.trim()) return undefined
   if (isPureJsSyntax(sanitized)) return undefined
 
-  // Assignments (x = expr, x += expr, …) MUST go through JS fallback.
+  // Assignments MUST go through JS fallback.
   // expr-eval treats `=` as `==`, so `x = !x` silently evaluates as a
   // comparison returning a boolean: the signal is never mutated.
   if (!ASSIGNMENT_RE.test(sanitized)) {
@@ -301,7 +301,7 @@ function extractMethodParams(body: string, tree: StateTree): string[] {
     'console', 'parseInt', 'parseFloat', 'isNaN', 'isFinite', 'NaN',
     'Infinity', 'globalThis', 'window', 'document', 'fetch',
     'setTimeout', 'clearTimeout', 'setInterval', 'clearInterval',
-    // Common Array prototype methods (appear as `arr.method(...)`)
+    // Common Array prototype methods
     'map', 'filter', 'find', 'findIndex', 'forEach', 'reduce', 'reduceRight',
     'some', 'every', 'flat', 'flatMap', 'includes', 'indexOf', 'lastIndexOf',
     'push', 'pop', 'shift', 'unshift', 'splice', 'slice', 'join', 'reverse',
@@ -312,30 +312,75 @@ function extractMethodParams(body: string, tree: StateTree): string[] {
     // Common String methods
     'trim', 'split', 'replace', 'match', 'search', 'startsWith', 'endsWith',
     'includes', 'substring', 'slice', 'toUpperCase', 'toLowerCase', 'charAt',
+    'toFixed', 'padStart', 'padEnd', 'repeat',
   ])
 
+  // Strip strings and backticks
+  const safeBody = body
+    .replace(/'[^']*'/g, "''")
+    .replace(/"[^"]*"/g, '""')
+    .replace(/\`[^\`]*\`/g, '``')
+
+  const declared = new Set<string>()
+
+  // Local declarations
+  const declRe = /\b(?:const|let|var)\s+([a-zA-Z_$][\w$]*)\b/g
+  let dMatch: RegExpExecArray | null
+  while ((dMatch = declRe.exec(safeBody)) !== null) {
+    if (dMatch[1]) declared.add(dMatch[1])
+  }
+
+  // Single-param arrow functions
+  const singleArrowRe = /\b([a-zA-Z_$][\w$]*)\s*=>/g
+  while ((dMatch = singleArrowRe.exec(safeBody)) !== null) {
+    if (dMatch[1]) declared.add(dMatch[1])
+  }
+
+  // Multi-param arrow functions
+  const multiArrowRe = /\(([^)]*)\)\s*=>/g
+  while ((dMatch = multiArrowRe.exec(safeBody)) !== null) {
+    const paramsList = dMatch[1]
+    if (paramsList) {
+      const pMatch = paramsList.match(/\b([a-zA-Z_$][\w$]*)\b/g)
+      if (pMatch) {
+         pMatch.forEach(p => declared.add(p))
+      }
+    }
+  }
+
+  // Catch blocks
+  const catchRe = /\bcatch\s*\(\s*([a-zA-Z_$][\w$]*)\s*\)/g
+  while ((dMatch = catchRe.exec(safeBody)) !== null) {
+    if (dMatch[1]) declared.add(dMatch[1])
+  }
+
   let match: RegExpExecArray | null
-  while ((match = identRe.exec(body)) !== null) {
+  while ((match = identRe.exec(safeBody)) !== null) {
     const name = match[1]!
     const matchStart = match.index!
 
     if (seen.has(name)) continue
 
-    if (reserved.has(name)) { seen.add(name); continue }
-    if (isKnownKey(tree, name)) { seen.add(name); continue }
+    if (reserved.has(name) || declared.has(name)) {
+      seen.add(name)
+      continue
+    }
+    if (isKnownKey(tree, name)) {
+      seen.add(name)
+      continue
+    }
 
-    // Skip property accesses: the char before the identifier is '.'
-    // IMPORTANT: do NOT add to `seen` here because the same identifier may
-    // appear later as a standalone param (for example `t.id === id`).
-    if (matchStart > 0 && body[matchStart - 1] === '.') continue
+    // Property accesses
+    if (matchStart > 0 && safeBody[matchStart - 1] === '.' && !(matchStart >= 3 && safeBody.slice(matchStart - 3, matchStart) === '...')) continue
 
-    // Add to seen now (after the dot-check) so future occurrences are skipped
+    // Object keys
+    const after = safeBody.slice(matchStart + name.length)
+    if (/^\s*:/.test(after)) {
+      seen.add(name)
+      continue
+    }
+
     seen.add(name)
-
-    // Skip arrow function parameters
-    const arrowParamRe = new RegExp(`(?:^|[,(])\\s*${name}\\s*(?=[,)=>])`)
-    if (arrowParamRe.test(body)) continue
-
     params.push(name)
   }
 
@@ -398,17 +443,38 @@ function buildMethod(
   // Detect named parameters in the body that are NOT in scope
   const paramNames = extractMethodParams(body, tree)
 
-  /**
-   * Builds a layered proxy to merge named positional parameters and
-   * the $event object with the outer scope proxy.
-   */
+  /** Build proxy for scope bindings and arguments. */
   const withArgs = (args: unknown[]): Record<string, unknown> => {
     const overlays: Record<string, unknown> = {}
-    // Bind named params positionally
-    for (let i = 0; i < paramNames.length; i++) {
-      overlays[paramNames[i]!] = args[i]
+
+    // Destructured arguments
+    const firstArg = args[0]
+    if (
+      args.length === 1 &&
+      typeof firstArg === 'object' &&
+      firstArg !== null &&
+      !Array.isArray(firstArg) &&
+      paramNames.length > 1
+    ) {
+      const argObj = firstArg as Record<string, unknown>
+      const hasMatchingKey = paramNames.some((p) => p in argObj)
+      if (hasMatchingKey) {
+        for (const p of paramNames) {
+          if (p in argObj) overlays[p] = argObj[p]
+        }
+        // Fallback to primitive binding
+        if (!(paramNames[0]! in argObj)) overlays[paramNames[0]!] = firstArg
+      } else {
+        overlays[paramNames[0]!] = firstArg
+      }
+    } else {
+      // Bind named params positionally
+      for (let i = 0; i < paramNames.length; i++) {
+        overlays[paramNames[i]!] = args[i]
+      }
     }
-    // Always bind $event too (for DOM event handlers)
+
+    // Always bind event too
     if (args.length > 0) overlays['$event'] = args[0]
 
     if (Object.keys(overlays).length === 0) return proxy
@@ -416,15 +482,15 @@ function buildMethod(
   }
 
   if (!hasAwait) {
-    // Sync: expr-eval for simple expressions, JS with() fallback
-    // for multi-statement bodies (if/const/assignments).
+    // Sync: expr-eval for simple expressions, JS with fallback
+    // for multi-statement bodies.
     return (...args: unknown[]) => safeEvaluate(body, withArgs(args))
   }
 
-  // Async: full JS statement block inside with(proxy).
+  // Async: full JS statement block inside proxy.
   //
   //   isLoading = true          triggers proxy set trap which sets signal.value = true
-  //   const response = await fetch(url) fetches from global, response is local const
+  // For example await fetch fetches from global, response is local const
   //   users = data              triggers proxy set trap which sets signal.value = data
   //
   return (...args: unknown[]) => {

@@ -1,6 +1,6 @@
 /** @EiderScript.DOM.MorphdomPatcher - Incremental DOM patching via morphdom */
 // morphdom ships a CJS main + ESM module. The TS declaration uses `export default`
-// but the CJS entrypoint is a direct function reference (module.exports = morphdom).
+// but the CJS entrypoint is a direct function reference.
 // We cast to the known function shape to avoid the TS declaration mismatch.
 import { Effect } from 'effect'
 

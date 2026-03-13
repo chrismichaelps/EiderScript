@@ -86,22 +86,22 @@ export function normalizeYaml(source: string): string {
       continue
     }
 
-    // YAML sequence items (`- …`, `- `) to emit unchanged (never join)
+    // YAML sequence items to emit unchanged never join
     if (trimmed.startsWith('- ') || trimmed === '-') {
       out.push(line)
       i++
       continue
     }
 
-    // Lines with inline YAML scalar values (key: value) to emit unchanged
-    // (e.g. `name: Counter`, `path: /`, but NOT bare `dark:bg-gray-900`)
+    // Lines with inline YAML scalar values to emit unchanged
+    // but not bare utility classes
     if (hasInlineValue(trimmed)) {
       out.push(line)
       i++
       continue
     }
 
-    // Lines already ending with `:` (complete YAML key) to emit unchanged
+    // Lines already ending with colon to emit unchanged
     if (isYamlKeyEnd(trimmed)) {
       out.push(line)
       i++
@@ -109,7 +109,7 @@ export function normalizeYaml(source: string): string {
     }
 
     // Multi-line key joining
-    // Only attempt for template keys (HTML tags or `.class/#id` starts)
+    // Only attempt for template HTML tags or CSS classes
     if (isTemplateKeyStart(trimmed)) {
       let joined = trimEnd
       let j = i + 1
@@ -127,14 +127,14 @@ export function normalizeYaml(source: string): string {
         const firstToken = nextTrimmed.split(/\s+/)[0] ?? ''
         if (!isContinuationFirst(firstToken)) break
 
-        // Join this line (may be the terminal: ends with `:` or has inline value)
+        // Join this line may be the terminal line ending with colon or has inline value
         joined = joined.trimEnd() + ' ' + nextTrimmed.trimEnd()
         j++
 
         // Stop: key is complete
         if (isYamlKeyEnd(joined.trimEnd())) { done = true; break }
 
-        // Stop: the joined line now contains an inline value (the value is part of the key line)
+        // Stop: the joined line now contains an inline value which is part of the key line
         // Example: `span .rounded-full .bg-white .shadow-lg .ring-0 .transition: ""`
         if (hasInlineValue(joined)) { done = true; break }
       }

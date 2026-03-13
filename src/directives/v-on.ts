@@ -110,7 +110,7 @@ export function compileVOn(
 
   // Decide whether to pass a method directly or wrap a statement.
 
-  // Simple method name case (e.g. @click="toggleEdit")
+  // Simple method name case
   // If expr is a simple identifier and exists in scope.methods, use it directly.
   const isSimpleIdentifier = /^[a-zA-Z_$][\w$]*$/.test(expr.trim())
   if (isSimpleIdentifier) {
@@ -124,7 +124,7 @@ export function compileVOn(
     }
   }
 
-  // Statement or method-call case (e.g. @click="count++" or @click="save(1)")
+  // Statement or method-call case
   // Wrap in a function that provides $event in a child scope.
   const statementHandler = (...args: unknown[]): unknown => {
     const $event = args[0]

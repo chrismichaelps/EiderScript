@@ -9,7 +9,7 @@ export const EiderConfig = Config.all({
   // Retry limits for external calls
   retryCount: Config.integer('EIDER_RETRY_COUNT').pipe(Config.withDefault(3)),
 
-  // Max parallel action effects (concurrency limit)
+  // Max parallel action effects for concurrency limit
   maxConcurrency: Config.integer('EIDER_MAX_CONCURRENCY').pipe(Config.withDefault(10)),
 
   // Feature flags

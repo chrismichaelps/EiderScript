@@ -125,7 +125,7 @@ export function applyFilters(value: unknown, pipes: string[]): unknown {
     if (fn) {
       result = fn(result, ...args)
     }
-    // Unknown filter: pass-through silently (graceful degradation)
+    // Unknown filter: pass-through silently for graceful degradation
   }
   return result
 }
@@ -135,7 +135,7 @@ export function applyFilters(value: unknown, pipes: string[]): unknown {
  *  Example: `"count > 0 || show | capitalize"` becomes `["count > 0 || show", ["capitalize"]]`
  */
 export function splitPipeExpr(raw: string): { expr: string; pipes: string[] } {
-  // Split on single `|` (not `||`), from right-to-left so we don't consume `||`
+  // Split on single pipe not double pipe from right-to-left so we don't consume double pipe
   const parts: string[] = []
   let current = ''
   for (let i = 0; i < raw.length; i++) {

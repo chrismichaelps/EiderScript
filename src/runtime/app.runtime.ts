@@ -15,6 +15,12 @@ import type { AppAST } from '../schema/router.schema.js'
 import type { ComponentAST } from '../schema/component.schema.js'
 import type { StoreAST } from '../schema/store.schema.js'
 
+/** Derives the composable name for a store id. */
+function storeComposableName(id: string): string {
+  const pascal = id.replace(/[-_](\w)/g, (_, c: string) => c.toUpperCase())
+  return 'use' + pascal.charAt(0).toUpperCase() + pascal.slice(1) + 'Store'
+}
+
 /** @EiderScript.Runtime.App - Input descriptor for createEiderApp */
 export interface EiderAppInput {
   /** Main app .eider.yaml content (kind: app) */
@@ -56,24 +62,19 @@ export const createEiderApp = (
 
     const pinia = createPinia()
     const compiledComponents: Record<string, unknown> = {}
+    // Stores for component scopes
+    const globalStores: Record<string, unknown> = {}
 
-    // Parse + compile all component YAMLs
-    for (const [name, yaml] of Object.entries(input.components ?? {})) {
-      const doc = yield* parseYaml(yaml).pipe(
-        Effect.mapError((e) => new RuntimeError({ message: e.message, cause: e })),
-      )
-      if (doc.kind !== 'component') {
-        return yield* Effect.fail(
-          new RuntimeError({
-            message: `Expected component YAML for "${name}", got "${doc.kind}"`,
-          }),
-        )
-      }
-      const component = yield* compileComponent(doc.ast as ComponentAST).pipe(
-        Effect.mapError((e) => new RuntimeError({ message: e.message, cause: e })),
-      )
-      compiledComponents[name] = component
+    // Router proxy populated after compilation
+    // Captured by reference in globalStores for routing support
+    const routerRef: { current: import('vue-router').Router | null } = { current: null }
+    const lazyRouter = {
+      push: (to: unknown) => routerRef.current?.push(to as import('vue-router').RouteLocationRaw),
+      replace: (to: unknown) => routerRef.current?.replace(to as import('vue-router').RouteLocationRaw),
+      go: (delta: number) => routerRef.current?.go(delta),
+      back: () => routerRef.current?.go(-1),
     }
+    globalStores['$router'] = lazyRouter
 
     // Parse app YAML
     const appDoc = yield* parseYaml(input.app).pipe(
@@ -88,19 +89,7 @@ export const createEiderApp = (
     }
     const appAst = appDoc.ast as AppAST
 
-    // Compile inline components (embedded in app YAML under `components:`)
-    // These are already Zod-validated — no re-parsing needed.
-    const componentsToCompile = appAst.components ?? []
-
-    for (const compAst of componentsToCompile) {
-      const component = yield* compileComponent(compAst).pipe(
-        Effect.mapError((e) => new RuntimeError({ message: e.message, cause: e })),
-      )
-      compiledComponents[compAst.name] = component
-    }
-
-    // Compile external component YAMLs (passed via input.components)
-    // External definitions override inline ones on name collision.
+    // Configure Vue app
     const RootComponent = appAst.template
       ? {
         name: appAst.name,
@@ -111,22 +100,53 @@ export const createEiderApp = (
       }
       : { name: appAst.name, template: eiderConstants.routerViewTemplate }
 
-    // Create Vue app
     const vueApp = input.ssr
       ? createSSRApp(RootComponent as Parameters<typeof createSSRApp>[0])
       : createApp(RootComponent as Parameters<typeof createApp>[0])
 
     vueApp.use(pinia)
 
-    // Compile + register stores
-    for (const [, yaml] of Object.entries(input.stores ?? {})) {
+    // Compile stores before components
+    for (const [storeId, yaml] of Object.entries(input.stores ?? {})) {
       const storeDoc = yield* parseYaml(yaml).pipe(
         Effect.mapError((e) => new RuntimeError({ message: e.message, cause: e })),
       )
       if (storeDoc.kind !== eiderConstants.kindStore) continue
-      yield* compileStore(storeDoc.ast as StoreAST).pipe(
+      const storeFactory = yield* compileStore(storeDoc.ast as StoreAST).pipe(
         Effect.mapError((e) => new RuntimeError({ message: e.message, cause: e })),
       )
+      // Register store composable
+      const composableName = storeComposableName(storeId)
+      globalStores[composableName] = storeFactory as (...args: unknown[]) => unknown
+    }
+
+    // Compile external component YAMLs passed via input components
+    for (const [name, yaml] of Object.entries(input.components ?? {})) {
+      const doc = yield* parseYaml(yaml).pipe(
+        Effect.mapError((e) => new RuntimeError({ message: e.message, cause: e })),
+      )
+      if (doc.kind !== 'component') {
+        return yield* Effect.fail(
+          new RuntimeError({
+            message: `Expected component YAML for "${name}", got "${doc.kind}"`,
+          }),
+        )
+      }
+      const component = yield* compileComponent(doc.ast as ComponentAST, globalStores as Record<string, (...args: unknown[]) => unknown>).pipe(
+        Effect.mapError((e) => new RuntimeError({ message: e.message, cause: e })),
+      )
+      compiledComponents[name] = component
+    }
+
+    // Compile inline components embedded in app YAML under components key
+    // These are already Zod-validated — no re-parsing needed.
+    const componentsToCompile = appAst.components ?? []
+
+    for (const compAst of componentsToCompile) {
+      const component = yield* compileComponent(compAst, globalStores as Record<string, (...args: unknown[]) => unknown>).pipe(
+        Effect.mapError((e) => new RuntimeError({ message: e.message, cause: e })),
+      )
+      compiledComponents[compAst.name] = component
     }
 
     // Compile + install router
@@ -135,6 +155,8 @@ export const createEiderApp = (
       ({ template: `${eiderConstants.routerFallbackPrefix} ${name} ${eiderConstants.routerFallbackSuffix}` } satisfies RouteComponent)
 
     const router = compileRouter(appAst, resolveComponent, input.ssr ?? false, input.memoryRouter ?? false)
+    // Bind router instance
+    if (router) routerRef.current = router
     if (router) vueApp.use(router)
 
     // Load external global plugins
