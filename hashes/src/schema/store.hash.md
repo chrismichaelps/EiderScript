@@ -7,10 +7,12 @@ File: "@root/src/schema/store.schema.ts"
 ### [Signatures]
 - `StoreStateSchema: ZodRecord<ZodUnknown>`
 - `StoreGetterSchema: ZodRecord<ZodString>`
-- `StoreActionSchema: ZodObject<{ async?: ZodBoolean; body: ZodString }>`
+- `StoreActionSchema: ZodUnion<[ZodString, ZodObject<{ async?: ZodBoolean; body: ZodString }>]>`
 - `StoreWatchEntrySchema: ZodObject<{ handler: ZodString; immediate?: ZodBoolean; deep?: ZodBoolean }>`
 - `StoreWatchSchema: ZodRecord<StoreWatchEntrySchema>`
-- `StoreSchema: ZodObject<{ id: ZodString; state?, getters?, actions?, watch? }>`
+- `StorePluginSchema: ZodUnion<[ZodString, ZodObject<{ name: ZodString; options?: ZodRecord }>]>`
+- `StorePersistSchema: ZodUnion<[ZodBoolean, ZodObject<{ key?, storage?, paths?, omit? }>]>`
+- `StoreSchema: ZodObject<{ id: ZodString; state?, getters?, actions?, watch?, plugins?, persist? }>`
 ### [Governance]
 - Export_Law: named exports only
 - Transformation_Law: Zod → StoreAST (inferred type)

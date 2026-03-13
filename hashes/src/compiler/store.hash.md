@@ -26,11 +26,10 @@ Returns the `useStore` function created by Pinia's `defineStore(id, setup)`.
 Each `state` entry → `const key = ref(initialValue)` in the setup function.
 
 ### R-STORE-004: Getters → computed()
-Each `getters` entry → `const key = computed(() => expr-eval(body))` using signal scope.
+Each `getters` entry → `const key = computed(() => new Function(body))` using signal scope for JS constraint support (e.g. strict equality).
 
 ### R-STORE-005: Actions
-Actions are compiled into plain functions (sync) or async functions using specific type signatures (no `any`).
-Each action result is wrapped/run via Effect.
+Actions are compiled into pure JS fallback expressions (sync) or native async functions using specific type signatures (no `any`). Parameters are extracted via `extractActionParams` with multi-pass regex.
 
 ### R-STORE-007: Watch in Stores
 `watch[key]` entries → `watch(stateRef, handler, options)` called inside setup

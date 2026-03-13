@@ -23,11 +23,13 @@ createEiderApp(input: EiderAppInput): Effect<EiderApp, RuntimeError>
 ### R-APP-002: Pipeline
 ```
 parseYaml(yaml)
+  → compile external components
   → compileComponent | compileStore | compileRouter
   → createApp(RootComponent)
   → app.use(createPinia())
   → app.use(router)
   → evaluate global.plugins and execute app.use(input.plugins[name])
+  → router proxy injection
   → store registration
   → return app
 ```

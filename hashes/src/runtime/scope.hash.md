@@ -48,3 +48,6 @@ Errors are caught internally; returns `undefined` on failure.
 ### R-SCOPE-006: Scope Proxy
 The evaluation scope is a flat proxy: `{ ...props, ...signalValues, ...methodFns }`
 Signals are accessed by value (not `.value`) in expr-eval expressions.
+
+### R-SCOPE-007: Parameter Extraction
+`extractMethodParams` extracts explicit arguments via multi-pass regex, ignoring strings, object keys, and local vars. Supports object-destructuring parameter mapping for clean argument binding.
