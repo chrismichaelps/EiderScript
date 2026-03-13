@@ -9,6 +9,7 @@ import directivesDemoUrl from '../../examples/directives-demo.eider.yaml?raw';
 import staticContentUrl from '../../examples/static-content.eider.yaml?raw';
 import counterUrl from '../../examples/counter.eider.yaml?raw';
 import routingUrl from '../../examples/routing.eider.yaml?raw';
+import piniaStoreUrl from '../../examples/pinia-store.eider.yaml?raw';
 
 export interface Example {
   id: string;
@@ -17,6 +18,7 @@ export interface Example {
 }
 
 export const examples: Example[] = [
+  { id: 'pinia-store', name: 'Pinia Store', code: piniaStoreUrl },
   { id: 'auth-form', name: 'Auth Form', code: authFormUrl },
   { id: 'modal', name: 'Modal', code: modalUrl },
   { id: 'theme-toggle', name: 'Theme Toggle', code: themeToggleUrl },

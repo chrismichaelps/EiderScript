@@ -4,6 +4,7 @@ import { createEiderApp } from '../../../src/index.ts';
 import type { EiderApp } from '../../../src/index.ts';
 import { Effect } from 'effect';
 import { usePlaygroundStore } from '../store/playground';
+import { splitYamlDocuments } from '../utils/yaml-documents';
 
 const store = usePlaygroundStore();
 
@@ -14,58 +15,60 @@ let compileTimeout: any = null;
 
 const renderApp = async (yaml: string) => {
   if (!previewContainer.value || !yaml) return;
-  
+
   // Cleanup previous instance
   if (currentApp) {
     try {
-      if (currentApp.vueApp) {
-        currentApp.vueApp.unmount();
-      }
+      if (currentApp.vueApp) currentApp.vueApp.unmount();
     } catch (e) {
       console.warn('Eider unmount warn:', e);
     }
-    // Reset container
-    if (previewContainer.value) {
-      previewContainer.value.innerHTML = '';
-    }
+    if (previewContainer.value) previewContainer.value.innerHTML = '';
     currentApp = null;
   }
 
   store.setError(null);
 
   try {
-    const isComponent = yaml.includes('template:') && !yaml.includes('router:');
-    let appYaml = yaml;
-    let componentsYaml: Record<string, string> = {};
+    // Split multi-document YAML (stores + app + components)
+    const { app: appDoc, stores, components, isMultiDocument } = splitYamlDocuments(yaml);
 
-    if (isComponent) {
+    let appYaml = appDoc;
+    let componentsYaml: Record<string, string> = { ...components };
+    let storesYaml: Record<string, string> = { ...stores };
+
+    // Single-document component shorthand
+    const isBareComponent = !isMultiDocument
+      && yaml.includes('template:')
+      && !yaml.includes('router:');
+
+    if (isBareComponent) {
       const nameMatch = yaml.match(/(?:^|\n)name:\s*([a-zA-Z0-9_]+)/);
-      const compName = nameMatch ? nameMatch[1] : 'PlaygroundComponent';
-      
-      appYaml = `
-name: PlaygroundWrapperApp
-template:
-  div .p-8 .flex .justify-center .items-center .min-h-full:
-    ${compName}: {}
-`;
+      const compName = nameMatch?.[1] ?? 'PlaygroundComponent';
+
+      appYaml = `name: PlaygroundWrapperApp\ntemplate:\n  div .p-8 .flex .justify-center .items-center .min-h-full:\n    ${compName}: {}\n`;
       componentsYaml[compName] = yaml;
+      storesYaml = {};
     }
 
-    const program = createEiderApp({ 
+    // Build and run the EiderScript app
+    const program = createEiderApp({
       app: appYaml,
       components: componentsYaml,
-      memoryRouter: true
+      stores: storesYaml,
+      memoryRouter: true,
     });
+
     const result = await Effect.runPromise(program);
     currentApp = result;
-    
-    // Mount container
+
+    // Mount into a fresh host element
     const host = document.createElement('div');
     const sessionId = Math.random().toString(36).substring(2, 9);
     host.id = `eider-playground-root-${sessionId}`;
     host.className = 'w-full min-h-full flex flex-col items-center bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 transition-colors duration-300';
     previewContainer.value.appendChild(host);
-    
+
     result.mount(`#${host.id}`);
   } catch (err: any) {
     console.error('EiderScript Compilation/Render Error:', err);
