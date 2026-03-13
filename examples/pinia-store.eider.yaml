@@ -341,42 +341,24 @@ components:
           name: "Wireless Headphones"
           category: "Electronics"
           price: 79.99
-          image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600&h=400&fit=crop"
+          image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80"
         - id: 2
           name: "Mechanical Keyboard"
           category: "Electronics"
           price: 129.99
-          image: "https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?w=600&h=400&fit=crop"
+          image: "https://images.unsplash.com/photo-1511467687858-23d96c32e4ae?w=800&q=80"
+
         - id: 3
-          name: "Ergonomic Mouse"
-          category: "Electronics"
-          price: 49.99
-          image: "https://images.unsplash.com/photo-1527866959252-deab85ef7d1b?w=600&h=400&fit=crop"
-        - id: 4
-          name: "Standing Desk Mat"
-          category: "Office"
-          price: 34.99
-          image: "https://images.unsplash.com/photo-1598986646516-93e5bd002825?w=600&h=400&fit=crop"
-        - id: 5
-          name: "USB-C Hub"
-          category: "Electronics"
-          price: 59.99
-          image: "https://images.unsplash.com/photo-1544244015-0cd4b3ff2091?w=600&h=400&fit=crop"
-        - id: 6
           name: "Notebook Set"
           category: "Stationery"
           price: 14.99
-          image: "https://images.unsplash.com/photo-1531346878377-a5be20888e57?w=600&h=400&fit=crop"
-        - id: 7
+          image: "https://images.unsplash.com/photo-1517842645767-c639042777db?w=800&q=80"
+        - id: 4
           name: "Coffee Mug"
           category: "Kitchen"
           price: 19.99
-          image: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600&h=400&fit=crop"
-        - id: 8
-          name: "Cable Organizer"
-          category: "Office"
-          price: 9.99
-          image: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=600&h=400&fit=crop"
+          image: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=800&q=80"
+
       cartStore: null
 
     onMounted: "cartStore = useCartStore()"
